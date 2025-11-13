@@ -5,6 +5,12 @@ SECTIONS
     /* Load address (1MB is typical for x86_64 kernels) */
     . = 1M;
 
+    .boot :
+    {
+        /* ensure that the multiboot header is at the beginning */
+        *(.multiboot_header)
+    }
+
     .text : ALIGN(4K) {
         *(.text*)
     }
