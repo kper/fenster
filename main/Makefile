@@ -1,5 +1,3 @@
-all: build mkiso
-
 build:
 	mkdir -p build/isofiles/boot/grub
 	cp bootloader/grub.cfg build/isofiles/boot/grub/grub.cfg
@@ -10,6 +8,8 @@ mkiso:
 
 boot: clean build mkiso
 	qemu-system-x86_64 -cdrom build/os.iso
+
+all: build mkiso
 
 clean:
 	rm -rf build

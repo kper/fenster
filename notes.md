@@ -1,3 +1,7 @@
+Following the original tutorial to implement a multiboot-compliant kernel, some of the following tools were used. I noted some of the below commands to get the original tutorial running:
+
+https://os.phil-opp.com/multiboot-kernel/
+
 ## Step 1
 
 Install `nasm`:
