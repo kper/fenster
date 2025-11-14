@@ -8,6 +8,6 @@ void print(const char* txt) {
 }
 
 extern "C" void kernel_main(void) {
-    const char* txt = "Welcome to Fenster!";
+    const char* txt = "Willkommen zu 'Fenster'!";
     print(txt);
 }

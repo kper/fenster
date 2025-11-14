@@ -28,6 +28,16 @@ SECTIONS
         *(COMMON)
     }
 
+    /* Page tables: 4 KiB each, initially identity-mapped to 2 MiB huge pages */
+    .pagetables (NOLOAD) : ALIGN(4096) {
+        p4_table = .;
+        . = . + 4096;
+        p3_table = .;
+        . = . + 4096;
+        p2_table = .;
+        . = . + 4096;
+    }
+
     /* Define stack space (16 KiB) */
     .stack (NOLOAD) : ALIGN(16) {
         . = . + 16K;
