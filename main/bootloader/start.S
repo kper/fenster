@@ -12,6 +12,16 @@ long_mode_start:
     movw %ax, %fs
     movw %ax, %gs
 
+    # Enable SSE (the compiler generates some SSE insns in the ISR plogoue, and we don't want #UD errors)
+    mov     %cr0, %rax
+    and     $~(1 << 2), %rax        # clear CR0.EM (bit 2)
+    or      $(1 << 1), %rax         # set CR0.MP (bit 1)
+    mov     %rax, %cr0
+
+    mov     %cr4, %rax
+    or      $((1 << 9) | (1 << 10)), %rax   # set OSFXSR (bit 9) and OSXMMEXCPT (bit 10)
+    mov     %rax, %cr4
+
     # Run main()
     call kernel_main
     hlt

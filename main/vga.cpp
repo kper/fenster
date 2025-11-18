@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 enum Color
 {
     BLACK = 0x0,
@@ -38,6 +40,7 @@ public:
     VgaOutStream &operator<<(const char *c);
 
     VgaOutStream &operator<<(const int i);
+    VgaOutStream &operator<<(const uint64_t i);
 
     VgaOutStream &operator<<(const Color foreground);
     VgaOutStream &operator<<(const VgaFormat f);
@@ -118,6 +121,31 @@ VgaOutStream &VgaOutStream::operator<<(int i)
     return *this;
 }
 
+VgaOutStream &VgaOutStream::operator<<(uint64_t i)
+{
+    if (i == 0) {
+        *this << '0';
+        return *this;
+    }
+
+    uint64_t d = 1;
+    uint64_t t = i;
+    while (t != 0)
+    {
+        t /= 10;
+        d *= 10;
+    }
+
+    while (d > 1)
+    {
+        uint64_t digit = (i * 10 / d) % 10;
+        *this << static_cast<char>('0' + digit);
+        d /= 10;
+    }
+
+    return *this;
+}
+
 VgaOutStream &VgaOutStream::operator<<(const Color foreground)
 {
     format = {foreground, format.background};
@@ -177,31 +205,4 @@ void VgaOutStream::setCursor(int row, int col)
 
     outb(0x3D4, 0x0E);
     outb(0x3D5, (unsigned char)((pos >> 8) & 0xFF));
-}
-
-VgaOutStream vga = VgaOutStream();
-
-void printLogo() {
-    
-    vga.clear();
-
-    vga << vga.endl << vga.endl << vga.endl;
-    vga << "                              " << RED << ",.=:!!t3Z3z.," << vga.endl ;
-    vga << "                             " << RED << ":tt:::tt333EE3" << vga.endl ;
-    vga << "                             " << RED << "Et:::ztt33EEEL " << GREEN << "@Ee.,      ..," << vga.endl ;
-    vga << "                            " << RED << ";tt:::tt333EE7 " << GREEN << ";EEEEEEttttt33#" << vga.endl ;
-    vga << "                           " << RED << ":Et:::zt333EEQ. " << GREEN << "$EEEEEttttt33QL" << vga.endl ;
-    vga << "                           " << RED << "it::::tt333EEF " << GREEN << "@EEEEEEttttt33F" << vga.endl ;
-    vga << "                          " << RED << ";3=*^```\"*4EEV " << GREEN << ":EEEEEEttttt33@." << vga.endl ;
-    vga << "                          " << BLUE << ",.=::::!t=., ` " << GREEN << "@EEEEEEtttz33QF" << vga.endl ;
-    vga << "                         " << BLUE << ";::::::::zt33)   " << GREEN << "\"4EEEtttji3P*" << vga.endl ;
-    vga << "                        " << BLUE << ":t::::::::tt33.:" << YELLOW << "Z3z..  `` ,..g." << vga.endl ;
-    vga << "                        " << BLUE << "i::::::::zt33F " << YELLOW << "AEEEtttt::::ztF" << vga.endl ;
-    vga << "                       " << BLUE << ";:::::::::t33V " << YELLOW << ";EEEttttt::::t3" << vga.endl ;
-    vga << "                       " << BLUE << "E::::::::zt33L " << YELLOW << "@EEEtttt::::z3F" << vga.endl ;
-    vga << "                      " << BLUE << "{3=*^```\"*4E3) " << YELLOW << ";EEEtttt:::::tZ`" << vga.endl ;
-    vga << "                                   " << BLUE << "` " << YELLOW << ":EEEEtttt::::z7" << vga.endl ;
-    vga << "                                       " << YELLOW << "\"VEzjt:;;z>*`" << WHITE << vga.endl ;
-    vga << vga.endl << vga.endl;
-    vga << "                               -- Fenster -- " << vga.endl;
 }
