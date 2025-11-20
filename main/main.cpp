@@ -2,11 +2,12 @@
 #include "idt.cpp"
 
 static VgaOutStream vga = VgaOutStream();
+static GDT gdt = GDT();
 static IDT idt = IDT();
 
 // Prepare exception handlers
 
-__attribute__((no_caller_saved_registers)) void print_stack_frame(InterruptStackFrame *frame) {
+void print_stack_frame(InterruptStackFrame *frame) {
     
     VgaFormat orig = vga.format;
 
@@ -42,25 +43,39 @@ __attribute__((interrupt)) void ud_handler(InterruptStackFrame *frame)
 __attribute__((interrupt)) void df_handler(InterruptStackFrame *frame, uint64_t code)
 {
     VgaFormat before = vga.format;
-    vga << YELLOW << "Exception: Double Fault (error code: " << code << ")" << before << vga.endl;
+    vga << YELLOW << "Exception: Double Fault" << before << vga.endl;
     print_stack_frame(frame);
     asm volatile("hlt");
 }
 
+__attribute__((interrupt)) void pf_handler(InterruptStackFrame *frame, uint64_t code)
+{
+    VgaFormat before = vga.format;
+    vga << YELLOW << "Exception: Page Fault (error code: " << code << ")" << before << vga.endl;
+    print_stack_frame(frame);
+    asm volatile("hlt");
+}
+
+void test() {
+    test();
+}
+
 extern "C" void kernel_main(void)
 {
-    vga.clear();
+    // Sets up GDT, TSS + IST
+    gdt.init();
 
+    // Set up the IDT
     idt.set_idt_entry(0, de_handler);
     idt.set_idt_entry(6, ud_handler);
-    idt.set_idt_entry_err(8, df_handler);
+    idt.set_idt_entry_err(14, pf_handler);
+    // On #DF, switch to the df-stack (at idx 1)
+    idt.set_idt_entry_err(8, 1, df_handler);
     idt.load();
 
-    vga << "Initialized IDT" << vga.endl;
+    vga.clear();
+    vga << "Kernel setup complete" << vga.endl;
 
-    // Force a real #DE at runtime
-    volatile int zero = 0;
-    int i = 5 / zero;
-    (void)i;
-
+    // Force a stack overflow (-> should by caught by df_handler)
+    test();
 }

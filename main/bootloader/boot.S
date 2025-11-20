@@ -119,6 +119,35 @@ set_up_page_tables:
     cmpl $512, %ecx     # if counter == 512, the whole P2 table is mapped
     jne .map_p2_table   # else map the next entry
 
+    # remap the huge page containing the stack explicitly in the single p1_table
+    
+    movl $_stack_guard, %eax
+    shrl $21, %eax                 # index into p2_table (we can do that because the stack is aligned to 2MiB)
+    movl %eax, %edi                # save index in EDI
+
+    movl $p1_table, %eax
+    orl  $0b11, %eax                # present + writable, (not huge)
+    movl %eax, p2_table(,%edi,8)    # overwrite the P2 entry containing the stack
+
+    # leave the first P1 entry unmapped (the guard page)
+    movl $0, p1_table               # unmapped (no need to set an address if unmapped)
+
+    # identity map remaining P1 entries to 4KiB pages
+    movl $1, %ecx
+
+.map_p1_table:
+    # map ecx-th P1 entry to a page that starts at address (_stack_guard + 4KiB*ecx)
+    movl $0x1000, %eax              # 4KiB
+    mull %ecx                       # start address of ecx-th page
+    addl $_stack_guard, %eax        # add the _stack_guard offset
+    orl $0b11, %eax                 # present + writable, (not huge)
+    movl %eax, p1_table(,%ecx,8)    # map ecx-th entry
+
+    incl %ecx           # increase counter
+    cmpl $512, %ecx     # if counter == 512, the whole P1 table is mapped
+    jne .map_p1_table   # else map the next entry
+
+
     ret
 
 enable_paging:
@@ -145,7 +174,7 @@ enable_paging:
     ret
 
 
-# Set up the Global Descriptor Table (GDT)
+# Initial Global Descriptor Table (GDT), will be remapped at kernel startup
 
     .section .rodata
 gdt64:

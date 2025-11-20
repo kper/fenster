@@ -36,11 +36,18 @@ SECTIONS
         . = . + 4096;
         p2_table = .;
         . = . + 4096;
+        p1_table = .; /* Reserve one p1 table which we'll use to map the stack + guard page */
+        . = . + 4096;
     }
 
-    /* Define stack space (16 KiB) */
-    .stack (NOLOAD) : ALIGN(16) {
+    /* Define stack space. For it to be mapped to a specific p2 entry, align to 2MiB */
+    .stack (NOLOAD) : ALIGN(2M) {
+        _stack_guard  = .;         /* guard page (unmapped) */
+        . = . + 4K;
+
+        _stack_bot = .;
         . = . + 16K;
+
         _stack_top = .;
     }
 }
