@@ -174,7 +174,7 @@ enable_paging:
     ret
 
 
-# Set up the Global Descriptor Table (GDT)
+# Initial Global Descriptor Table (GDT), will be remapped at kernel startup
 
     .section .rodata
 gdt64:

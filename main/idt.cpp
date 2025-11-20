@@ -1,3 +1,4 @@
+#include "gdt.cpp"
 #include <stdint.h>
 
 struct InterruptStackFrame
@@ -25,21 +26,23 @@ struct IdtDescriptor
     uint64_t base;  // Base address of the IDT
 } __attribute__((packed));
 
-// CS segment selector, as specified during the setup of the GDT (see boot.S)
-constexpr uint16_t CS_SELECTOR = 0x08;
-
 class IDT
 {
 public:
+    
     void set_idt_entry(uint8_t vec, void (*handler)(InterruptStackFrame *));
     void set_idt_entry_err(uint8_t vec, void (*handler)(InterruptStackFrame *, uint64_t));
+    
+    void set_idt_entry(uint8_t vec, uint8_t ist_vec, void (*handler)(InterruptStackFrame *));
+    void set_idt_entry_err(uint8_t vec, uint8_t ist_vec, void (*handler)(InterruptStackFrame *, uint64_t));
+    
     void load();
 
 private:
     IdtEntry idt[256];
 };
 
-void IDT::set_idt_entry(uint8_t vec, void (*handler)(InterruptStackFrame *))
+void IDT::set_idt_entry(uint8_t vec, uint8_t ist_vec, void (*handler)(InterruptStackFrame *))
 {
     uint64_t addr = (uint64_t)handler;
     IdtEntry &e = idt[vec];
@@ -58,13 +61,24 @@ void IDT::set_idt_entry(uint8_t vec, void (*handler)(InterruptStackFrame *))
     // [13..14] Descriptor Privilege Level (DPL)
     // [15]	Present
     e.options = 0b1000111000000000;
+    e.options |= ist_vec;
     
     e.reserved = 0;
+}
+
+void IDT::set_idt_entry(uint8_t vec, void (*handler)(InterruptStackFrame *))
+{
+    set_idt_entry(vec, 0, handler);
 }
 
 void IDT::set_idt_entry_err(uint8_t vec, void (*handler)(InterruptStackFrame *, uint64_t))
 {
     set_idt_entry(vec, (void (*)(InterruptStackFrame *))handler);
+}
+
+void IDT::set_idt_entry_err(uint8_t vec, uint8_t ist_vec, void (*handler)(InterruptStackFrame *, uint64_t))
+{
+    set_idt_entry(vec, ist_vec, (void (*)(InterruptStackFrame *))handler);
 }
 
 void IDT::load() {
