@@ -47,6 +47,18 @@ __attribute__((interrupt)) void df_handler(InterruptStackFrame *frame, uint64_t 
     asm volatile("hlt");
 }
 
+__attribute__((interrupt)) void pf_handler(InterruptStackFrame *frame, uint64_t code)
+{
+    VgaFormat before = vga.format;
+    vga << YELLOW << "Exception: Page Fault (error code: " << code << ")" << before << vga.endl;
+    print_stack_frame(frame);
+    asm volatile("hlt");
+}
+
+void test() {
+    test();
+}
+
 extern "C" void kernel_main(void)
 {
     vga.clear();
@@ -54,13 +66,10 @@ extern "C" void kernel_main(void)
     idt.set_idt_entry(0, de_handler);
     idt.set_idt_entry(6, ud_handler);
     idt.set_idt_entry_err(8, df_handler);
+    idt.set_idt_entry_err(14, pf_handler);
     idt.load();
 
     vga << "Initialized IDT" << vga.endl;
 
-    // Force a real #DE at runtime
-    volatile int zero = 0;
-    int i = 5 / zero;
-    (void)i;
-
+    test();
 }
