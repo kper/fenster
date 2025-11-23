@@ -24,4 +24,8 @@ long_mode_start:
 
     # Run main()
     call kernel_main
+    
+    # Never return
+    1: 
     hlt
+    jmp 1b

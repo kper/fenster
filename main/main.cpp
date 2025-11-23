@@ -1,9 +1,16 @@
-#include "vga.cpp"
-#include "idt.cpp"
+#pragma GCC diagnostic ignored "-Wexcessive-regsave"
+
+#include <stdint.h>
+
+#include "ioutils.hpp"
+#include "vga.hpp"
+#include "pic.hpp"
+#include "idt.hpp"
 
 static VgaOutStream vga = VgaOutStream();
 static GDT gdt = GDT();
 static IDT idt = IDT();
+static ChainedPICs pics = ChainedPICs();
 
 // Prepare exception handlers
 
@@ -56,8 +63,34 @@ __attribute__((interrupt)) void pf_handler(InterruptStackFrame *frame, uint64_t 
     asm volatile("hlt");
 }
 
-void test() {
-    test();
+__attribute__((interrupt)) void timer_handler(InterruptStackFrame *frame)
+{
+    vga << ".";
+
+    pics.notify_end_of_interrupt(Interrupt::TIMER);
+}
+
+__attribute__((interrupt)) void keyboard_handler(InterruptStackFrame *frame)
+{
+    uint8_t scancode = inb(0x60);
+    
+    if ((scancode & 0x80) != 0) {
+        // Do nothing on key release
+        pics.notify_end_of_interrupt(Interrupt::KEYBOARD);
+        return;
+    }
+    
+    char c;
+    if (scancode >= 0x02 && scancode <= 0x0b) {
+        c = '0' + (scancode - 1) % 10;
+    } else {
+        // TODO: Map the other keys
+        c = '.';
+    }
+    
+    vga << c;
+    
+    pics.notify_end_of_interrupt(Interrupt::KEYBOARD);
 }
 
 extern "C" void kernel_main(void)
@@ -72,10 +105,18 @@ extern "C" void kernel_main(void)
     // On #DF, switch to the df-stack (at idx 1)
     idt.set_idt_entry_err(8, 1, df_handler);
     idt.load();
+    
+    
+    // Init PIC & register interrupts handlers
+    pics.init(PIC_1_OFFSET, PIC_2_OFFSET);
+    idt.set_idt_entry(Interrupt::TIMER, timer_handler);
+    idt.set_idt_entry(Interrupt::KEYBOARD, keyboard_handler);
+
+    // Disable the timer for now
+    pics.disable(Interrupt::TIMER);
+    
+    interrupts_enable();
 
     vga.clear();
-    vga << "Kernel setup complete" << vga.endl;
-
-    // Force a stack overflow (-> should by caught by df_handler)
-    test();
+    vga << GREEN << "Kernel setup complete" << WHITE << vga.endl;
 }
