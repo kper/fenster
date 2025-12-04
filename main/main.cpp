@@ -7,6 +7,7 @@
 #include "pic.hpp"
 #include "idt.hpp"
 #include "bootinfo.hpp"
+#include "paging/c3.h"
 
 static VgaOutStream vga = VgaOutStream();
 static GDT gdt = GDT();
@@ -123,5 +124,17 @@ extern "C" void kernel_main(void *mb_info_addr)
 
     BootInfo* boot_info = static_cast<BootInfo *>(mb_info_addr);
     boot_info->print(vga);
+
+    vga << vga.endl;
+    vga << "=== P4 Page Table ===" << vga.endl;
+    P4Table* p4 = c3::get();
+
+    // Print with different recursion levels:
+    // 0 = P4 only
+    // 1 = P4 -> P3
+    // 2 = P4 -> P3 -> P2
+    // 3 = P4 -> P3 -> P2 -> P1 (full tree)
+    // -1 = all levels (same as 3)
+    p4->print(vga, 1);
 
 }

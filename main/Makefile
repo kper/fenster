@@ -39,6 +39,8 @@ SOURCES_CPP := \
     gdt.cpp \
     idt.cpp \
     bootinfo.cpp \
+    paging/PageTableEntry.cpp \
+    paging/PageTable.cpp \
     main.cpp
 
 SOURCES_ASM := \

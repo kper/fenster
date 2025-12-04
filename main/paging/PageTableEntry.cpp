@@ -1,0 +1,21 @@
+#include "PageTableEntry.h"
+#include "../vga.hpp"
+
+void PageTableEntry::print(VgaOutStream& stream) const {
+    if (!is_present()) {
+        stream << "(not present)";
+        return;
+    }
+
+    stream << "addr=0x" << get_address() << " [";
+
+    if (is_present()) stream << "P";
+    if (is_writable()) stream << "W";
+    if (is_user_accessible()) stream << "U";
+    if (is_huge()) stream << "H";
+    if (is_accessed()) stream << "A";
+    if (is_dirty()) stream << "D";
+    if (!is_executable()) stream << "NX";
+
+    stream << "]";
+}
