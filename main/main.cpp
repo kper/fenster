@@ -6,6 +6,7 @@
 #include "vga.hpp"
 #include "pic.hpp"
 #include "idt.hpp"
+#include "bootinfo.hpp"
 
 static VgaOutStream vga = VgaOutStream();
 static GDT gdt = GDT();
@@ -93,7 +94,7 @@ __attribute__((interrupt)) void keyboard_handler(InterruptStackFrame *frame)
     pics.notify_end_of_interrupt(Interrupt::KEYBOARD);
 }
 
-extern "C" void kernel_main(void)
+extern "C" void kernel_main(void *mb_info_addr)
 {
     // Sets up GDT, TSS + IST
     gdt.init();
@@ -119,4 +120,7 @@ extern "C" void kernel_main(void)
 
     vga.clear();
     vga << GREEN << "Kernel setup complete" << WHITE << vga.endl;
+
+    BootInfo* boot_info = static_cast<BootInfo *>(mb_info_addr);
+
 }

@@ -25,9 +25,9 @@ endif
 CFLAGS   := -target $(TARGET_ARCH) -ffreestanding -nostdlib -fno-sanitize=all -mgeneral-regs-only -Wall -Wextra -Wno-unused-parameter
 # Preprocessor flags (include current dir); extend as needed
 CPPFLAGS := -I .
-CXXFLAGS := $(CFLAGS) -std=gnu++17 -fno-exceptions -fno-rtti
-ASFLAGS  := -target $(TARGET_ARCH) -ffreestanding -nostdlib -fno-sanitize=all -mgeneral-regs-only
-LDFLAGS  := -target $(TARGET_ARCH) -nostdlib -ffreestanding -fno-sanitize=all -T linker.ld
+CXXFLAGS := $(CFLAGS) -std=gnu++17 -fno-exceptions -fno-rtti -g
+ASFLAGS  := -target $(TARGET_ARCH) -ffreestanding -nostdlib -fno-sanitize=all -mgeneral-regs-only -g
+LDFLAGS  := -target $(TARGET_ARCH) -nostdlib -ffreestanding -fno-sanitize=all -T linker.ld -g
 
 ###############################
 # Sources & objects
@@ -53,7 +53,7 @@ OBJECTS := \
 # Top-level targets
 ###############################
 
-.PHONY: all kernel mkiso boot clean prep
+.PHONY: all kernel mkiso boot clean prep debug
 
 all: kernel mkiso
 
@@ -74,6 +74,12 @@ boot: clean kernel mkiso
 	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso \
 		-no-reboot -no-shutdown \
 		-d int,guest_errors,cpu_reset
+
+debug: clean kernel mkiso
+	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso \
+		-no-reboot -no-shutdown \
+		-d int,guest_errors,cpu_reset \
+		-S -s
 
 # Clean build artifacts
 clean:
