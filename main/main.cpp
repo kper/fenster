@@ -147,11 +147,15 @@ extern "C" void kernel_main(void *mb_info_addr)
 
     vga << "Multiboot info:  0x" << (uint64_t)mb_info_addr << vga.endl;
 
+    AreaFrameAllocator(boot_info->get_memory_map(), 0, 0, 0, 0);
+
     boot_info->print(vga);
 
     vga << vga.endl;
 
+    vga << vga.endl;
     vga << "=== P4 Page Table (Recursive) ===" << vga.endl;
-    paging::P4Table* p4 = c3::get();
+    paging::P4Table* p4 = c3::get_virt_p4_table();
+    vga << "P4 table address: " << hex << (uint64_t) p4 << vga.endl;
     p4->print(vga, 1);
 }

@@ -17,18 +17,25 @@ namespace c3 {
      * With recursive page tables, P4 is always accessible at the recursive address
      * @return Pointer to the current P4 table
      */
-    inline paging::P4Table* get() {
+    inline paging::P4Table* get_virt_p4_table() {
         // With P4[511] pointing to P4 itself, we can access P4 at [511,511,511,511]
         return reinterpret_cast<paging::P4Table*>(paging::RECURSIVE_P4_ADDR);
     }
 
+    inline PhysicalAddress get_phys_addr() {
+        uint64_t cr3_value;
+        asm volatile("mov %%cr3, %0" : "=r"(cr3_value));
+        // CR3 bits 12-51 contain the physical address of P4 table
+        return cr3_value & 0x000FFFFFFFFFF000ULL;
+    }
+
     /**
-     * Set the P4 table in CR3
+     * Set the physical address to a new P4 Table
      * This will flush the TLB (Translation Lookaside Buffer)
-     * @param table Pointer to the new P4 table
+     * @param phys_addr Physical address of the new P4 table
      */
-    inline void set(paging::P4Table* table) {
-        uint64_t addr = reinterpret_cast<uint64_t>(table);
+    inline void set_phys_addr(PhysicalAddress phys_addr) {
+        uint64_t addr = phys_addr;
         // Ensure the address is page-aligned
         addr &= 0x000FFFFFFFFFF000ULL;
         asm volatile("mov %0, %%cr3" : : "r"(addr) : "memory");
@@ -38,7 +45,7 @@ namespace c3 {
      * Reload CR3 to flush the TLB
      */
     inline void flush() {
-        set(get());
+        set_phys_addr(get_phys_addr());
     }
 }
 

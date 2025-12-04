@@ -8,9 +8,14 @@
 #include "Entry.h"
 #include <stddef.h>
 
+using VirtualAddress = uint64_t;
+
 class VgaOutStream;
 
 namespace paging {
+
+// Forward declaration
+struct Frame;
 
 // Recursive page table constants
 // With P4[511] pointing to P4 itself, we can access all page tables through these addresses
@@ -113,6 +118,30 @@ public:
             return nullptr;
         }
         return reinterpret_cast<const Table<L - 1>*>(next_table_address(index));
+    }
+
+    // Get or create next level table - allocates a frame if entry is not present
+    template<int L = Level, typename Allocator>
+    typename enable_if<(L > 1), Table<L - 1>*>::type
+    next_table_create(size_t index, Allocator& allocator) {
+        if (entries[index].is_present()) {
+            return get_next_table<L - 1>(index);
+        }
+
+        // Allocate a new frame for the table
+        auto frame = allocator.allocate_frame();
+        if (frame.number == 0) {
+            return nullptr;  // Out of memory
+        }
+
+        // Set the entry to point to the new table with default flags
+        entries[index].set(frame.start_address(), Entry::PRESENT | Entry::WRITABLE);
+
+        // Get the newly created table and zero it
+        auto table = reinterpret_cast<Table<L - 1>*>(next_table_address(index));
+        table->clear();
+
+        return table;
     }
 
     // Print table entries

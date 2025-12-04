@@ -92,6 +92,20 @@ VgaOutStream &VgaOutStream::operator<<(uint32_t i)
 
 VgaOutStream &VgaOutStream::operator<<(uint64_t i)
 {
+    switch (num_format) {
+        case NumFormat::HEX:
+            print_hex(i);
+            num_format = NumFormat::DEC;  // Reset to decimal after use
+            return *this;
+        case NumFormat::BIN:
+            print_bin(i);
+            num_format = NumFormat::DEC;  // Reset to decimal after use
+            return *this;
+        case NumFormat::DEC:
+        default:
+            break;
+    }
+
     if (i == 0) {
         *this << '0';
         return *this;
@@ -169,4 +183,62 @@ void VgaOutStream::setCursor(int row, int col)
 
     outb(0x3D4, 0x0E);
     outb(0x3D5, (pos >> 8) & 0xFF);
+}
+
+VgaOutStream &VgaOutStream::operator<<(VgaOutStream& (*manip)(VgaOutStream&))
+{
+    return manip(*this);
+}
+
+void VgaOutStream::print_hex(uint64_t value)
+{
+    *this << "0x";
+
+    if (value == 0) {
+        *this << '0';
+        return;
+    }
+
+    // Find first non-zero nibble
+    int start_nibble = -1;
+    for (int i = 15; i >= 0; i--) {
+        if ((value >> (i * 4)) & 0xF) {
+            start_nibble = i;
+            break;
+        }
+    }
+
+    // Print hex digits
+    for (int i = start_nibble; i >= 0; i--) {
+        uint8_t nibble = (value >> (i * 4)) & 0xF;
+        if (nibble < 10) {
+            *this << static_cast<char>('0' + nibble);
+        } else {
+            *this << static_cast<char>('a' + (nibble - 10));
+        }
+    }
+}
+
+void VgaOutStream::print_bin(uint64_t value)
+{
+    *this << "0b";
+
+    if (value == 0) {
+        *this << '0';
+        return;
+    }
+
+    // Find first non-zero bit
+    int start_bit = -1;
+    for (int i = 63; i >= 0; i--) {
+        if ((value >> i) & 1) {
+            start_bit = i;
+            break;
+        }
+    }
+
+    // Print binary digits
+    for (int i = start_bit; i >= 0; i--) {
+        *this << (char)('0' + ((value >> i) & 1));
+    }
 }

@@ -7,7 +7,7 @@ void paging::Entry::print(VgaOutStream& stream) const {
         return;
     }
 
-    stream << "addr=0x" << get_address() << " [";
+    stream << "addr=" << hex << get_address() << " [";
 
     if (is_present()) stream << "P";
     if (is_writable()) stream << "W";

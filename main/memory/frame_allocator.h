@@ -7,17 +7,28 @@
 
 #include <stdint.h>
 #include "AreaFrameIterator.h"
-#include "paging/Page.h"
+#include "paging/paging.h"
 
 // Forward declarations
 struct Multiboot2TagMmap;
 struct MemoryArea;
 
 /**
+ * Abstract interface for frame allocators
+ * All frame allocators must implement this interface
+ */
+class FrameAllocator {
+public:
+    virtual ~FrameAllocator() = default;
+    virtual paging::Frame allocate_frame() = 0;
+    virtual void deallocate_frame(paging::Frame frame) = 0;
+};
+
+/**
  * Frame allocator that uses memory areas from multiboot memory map
  * Allocates frames from available physical memory regions
  */
-class AreaFrameAllocator {
+class AreaFrameAllocator : public FrameAllocator {
 private:
     const Multiboot2TagMmap* mmap;
     const MemoryArea* current_area;
@@ -54,13 +65,13 @@ public:
      * Allocate a single frame
      * @return Allocated frame, or Frame(0) if no memory available
      */
-    Frame allocate_frame();
+    paging::Frame allocate_frame() override;
 
     /**
      * Deallocate a frame (currently a no-op, future: bitmap allocator)
      * @param frame Frame to deallocate
      */
-    void deallocate_frame(Frame frame);
+    void deallocate_frame(paging::Frame frame) override;
 };
 
 #endif //MAIN_FRAME_H

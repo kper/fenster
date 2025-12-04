@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 
-#include "Page.h"
+using PhysicalAddress = uint64_t;
 
 class VgaOutStream;
 

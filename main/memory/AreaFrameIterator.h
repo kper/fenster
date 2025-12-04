@@ -7,41 +7,10 @@
 
 #include <stdint.h>
 
-constexpr uint64_t PAGE_SIZE = 4096;
+#include "paging/paging.h"
 
 // Forward declaration
 struct MemoryArea;
-
-/**
- * Represents a physical memory frame (4KB page)
- */
-class Frame {
-public:
-    uint64_t number;
-
-    Frame() : number(0) {}
-    explicit Frame(uint64_t num) : number(num) {}
-
-    uint64_t start_address() const {
-        return number * PAGE_SIZE;
-    }
-
-    static Frame containing_address(uint64_t addr) {
-        return Frame(addr / PAGE_SIZE);
-    }
-
-    Frame clone() const {
-        return Frame(number);
-    }
-
-    bool operator==(const Frame& other) const {
-        return number == other.number;
-    }
-
-    bool operator!=(const Frame& other) const {
-        return number != other.number;
-    }
-};
 
 /**
  * Iterator for frames within a memory area, excluding kernel and multiboot regions
@@ -87,7 +56,8 @@ public:
     );
 
     bool has_next() const;
-    Frame next();
+
+    paging::Frame next();
 };
 
 #endif //MAIN_AREA_FRAME_ITERATOR_H

@@ -4,7 +4,7 @@
 
 #include "AreaFrameIterator.h"
 #include "bootinfo.hpp"
-#include "paging/Page.h"
+#include "paging/paging.h"
 
 AreaFrameIterator::AreaFrameIterator(
     const MemoryArea* area,
@@ -13,15 +13,15 @@ AreaFrameIterator::AreaFrameIterator(
     PhysicalAddress multiboot_start,
     PhysicalAddress multiboot_end
 )
-    : current_frame(area->addr / PAGE_SIZE)
-    , end_frame((area->addr + area->len) / PAGE_SIZE)
-    , kernel_start_frame(kernel_start / PAGE_SIZE)
-    , kernel_end_frame((kernel_end + PAGE_SIZE - 1) / PAGE_SIZE)
-    , multiboot_start_frame(multiboot_start / PAGE_SIZE)
-    , multiboot_end_frame((multiboot_end + PAGE_SIZE - 1) / PAGE_SIZE)
+    : current_frame(area->addr / paging::PAGE_SIZE)
+    , end_frame((area->addr + area->len) / paging::PAGE_SIZE)
+    , kernel_start_frame(kernel_start / paging::PAGE_SIZE)
+    , kernel_end_frame((kernel_end + paging::PAGE_SIZE - 1) / paging::PAGE_SIZE)
+    , multiboot_start_frame(multiboot_start / paging::PAGE_SIZE)
+    , multiboot_end_frame((multiboot_end + paging::PAGE_SIZE - 1) / paging::PAGE_SIZE)
 {
     // Align start frame up if not aligned
-    if (area->addr % PAGE_SIZE != 0) {
+    if (area->addr % paging::PAGE_SIZE != 0) {
         current_frame++;
     }
 
@@ -49,12 +49,12 @@ bool AreaFrameIterator::has_next() const {
     return current_frame < end_frame;
 }
 
-Frame AreaFrameIterator::next() {
+paging::Frame AreaFrameIterator::next() {
     if (!has_next()) {
-        return Frame(0);  // Invalid frame
+        return paging::Frame(0);  // Invalid frame
     }
 
-    Frame frame(current_frame);
+    paging::Frame frame(current_frame);
     current_frame++;
 
     // Skip reserved frames
