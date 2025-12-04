@@ -1,4 +1,5 @@
 #include "vga.hpp"
+#include "ioutils.hpp"
 
 VgaOutStream &VgaOutStream::operator<<(const char c)
 {
@@ -57,6 +58,31 @@ VgaOutStream &VgaOutStream::operator<<(int i)
     while (d > 1)
     {
         int digit = (i * 10 / d) % 10;
+        *this << static_cast<char>('0' + digit);
+        d /= 10;
+    }
+
+    return *this;
+}
+
+VgaOutStream &VgaOutStream::operator<<(uint32_t i)
+{
+    if (i == 0) {
+        *this << '0';
+        return *this;
+    }
+
+    uint32_t d = 1;
+    uint32_t t = i;
+    while (t != 0)
+    {
+        t /= 10;
+        d *= 10;
+    }
+
+    while (d > 1)
+    {
+        uint32_t digit = (i * 10 / d) % 10;
         *this << static_cast<char>('0' + digit);
         d /= 10;
     }

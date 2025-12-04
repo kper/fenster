@@ -1,4 +1,19 @@
 #include "bootinfo.hpp"
+#include "vga.hpp"
+
+void BootInfo::print_size(VgaOutStream& stream, uint64_t bytes) {
+    uint64_t kb = bytes / 1024;
+    uint64_t mb = kb / 1024;
+    uint64_t gb = mb / 1024;
+
+    if (gb >= 1) {
+        stream << gb << " GB";
+    } else if (mb >= 1) {
+        stream << mb << " MB";
+    } else {
+        stream << kb << " KB";
+    }
+}
 
 const Multiboot2Tag* Multiboot2Tag::next() const {
     uint32_t aligned_size = (size + 7) & ~7;  // Align to 8 bytes
@@ -68,4 +83,63 @@ uint64_t BootInfo::get_total_memory() const {
 
 const Multiboot2TagMmap* BootInfo::get_memory_map() const {
     return static_cast<const Multiboot2TagMmap*>(find_tag(Multiboot2Tag::MMAP));
+}
+
+void BootInfo::print(VgaOutStream& stream) const {
+    stream << "=== Boot Information ===" << VgaOutStream::endl;
+    stream << "Total size: " << total_size << " bytes" << VgaOutStream::endl;
+    stream << VgaOutStream::endl;
+
+    // Boot loader name
+    if (has_boot_loader_name()) {
+        stream << "Bootloader: " << get_boot_loader_name() << VgaOutStream::endl;
+    }
+
+    // Command line
+    if (has_cmdline()) {
+        const char* cmdline = get_cmdline();
+        stream << "Cmdline: " << (cmdline ? cmdline : "(empty)") << VgaOutStream::endl;
+    }
+
+    stream << VgaOutStream::endl;
+
+    // Memory info
+    if (has_memory_info()) {
+        stream << "Memory Lower: " << get_mem_lower() << " KB" << VgaOutStream::endl;
+        stream << "Memory Upper: " << get_mem_upper() << " KB" << VgaOutStream::endl;
+        stream << "Total Memory: ";
+        print_size(stream, get_total_memory());
+        stream << VgaOutStream::endl;
+    }
+
+    stream << VgaOutStream::endl;
+
+    // Memory map
+    if (has_memory_map()) {
+        stream << "Memory Map:" << VgaOutStream::endl;
+        auto mmap = get_memory_map();
+        for (auto entry = mmap->entries_begin(); entry != mmap->entries_end(); ++entry) {
+            stream << "  0x";
+            stream << entry->addr << " - 0x";
+            stream << (entry->addr + entry->len) << " (";
+            print_size(stream, entry->len);
+            stream << ") ";
+
+            if (entry->is_available()) {
+                stream << "RAM";
+            } else if (entry->is_reserved()) {
+                stream << "Reserved";
+            } else if (entry->is_acpi_reclaimable()) {
+                stream << "ACPI Reclaimable";
+            } else if (entry->is_acpi_nvs()) {
+                stream << "ACPI NVS";
+            } else if (entry->is_bad()) {
+                stream << "Bad Memory";
+            } else {
+                stream << "Unknown";
+            }
+
+            stream << VgaOutStream::endl;
+        }
+    }
 }

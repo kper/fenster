@@ -38,6 +38,7 @@ SOURCES_CPP := \
     vga.cpp \
     gdt.cpp \
     idt.cpp \
+    bootinfo.cpp \
     main.cpp
 
 SOURCES_ASM := \

@@ -1,5 +1,4 @@
 #include <stdint.h>
-#include "ioutils.hpp"
 
 enum Color
 {
@@ -41,6 +40,7 @@ public:
     VgaOutStream &operator<<(const char *c);
 
     VgaOutStream &operator<<(const int i);
+    VgaOutStream &operator<<(const uint32_t i);
     VgaOutStream &operator<<(const uint64_t i);
 
     VgaOutStream &operator<<(const Color foreground);

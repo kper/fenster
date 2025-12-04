@@ -122,5 +122,6 @@ extern "C" void kernel_main(void *mb_info_addr)
     vga << GREEN << "Kernel setup complete" << WHITE << vga.endl;
 
     BootInfo* boot_info = static_cast<BootInfo *>(mb_info_addr);
+    boot_info->print(vga);
 
 }

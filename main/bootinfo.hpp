@@ -1,5 +1,8 @@
 #ifndef MAIN_BOOTINFO_H
 #define MAIN_BOOTINFO_H
+#include <stdint.h>
+
+class VgaOutStream;
 
 /**
  * Multiboot2 boot information (tag-based format)
@@ -94,7 +97,9 @@ struct Multiboot2TagMmap : public Multiboot2Tag {
 struct BootInfo {
 private:
     uint32_t total_size;
-    uint32_t reserved;
+    uint32_t reserved __attribute__((unused));
+
+    static void print_size(VgaOutStream& stream, uint64_t bytes);
 
 public:
     uint32_t get_total_size() const { return total_size; }
@@ -115,6 +120,8 @@ public:
     uint32_t get_mem_upper() const;
     uint64_t get_total_memory() const;
     const Multiboot2TagMmap* get_memory_map() const;
+
+    void print(VgaOutStream& stream) const;
 
 } __attribute__((packed));
 
