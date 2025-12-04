@@ -3,14 +3,15 @@
 //
 
 #include "AreaFrameIterator.h"
-#include "../bootinfo.hpp"
+#include "bootinfo.hpp"
+#include "paging/Page.h"
 
 AreaFrameIterator::AreaFrameIterator(
     const MemoryArea* area,
-    uint64_t kernel_start,
-    uint64_t kernel_end,
-    uint64_t multiboot_start,
-    uint64_t multiboot_end
+    PhysicalAddress kernel_start,
+    PhysicalAddress kernel_end,
+    PhysicalAddress multiboot_start,
+    PhysicalAddress multiboot_end
 )
     : current_frame(area->addr / PAGE_SIZE)
     , end_frame((area->addr + area->len) / PAGE_SIZE)

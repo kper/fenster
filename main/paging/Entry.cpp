@@ -1,7 +1,7 @@
-#include "PageTableEntry.h"
+#include "Entry.h"
 #include "../vga.hpp"
 
-void PageTableEntry::print(VgaOutStream& stream) const {
+void paging::Entry::print(VgaOutStream& stream) const {
     if (!is_present()) {
         stream << "(not present)";
         return;

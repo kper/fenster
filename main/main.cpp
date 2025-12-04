@@ -150,61 +150,8 @@ extern "C" void kernel_main(void *mb_info_addr)
     boot_info->print(vga);
 
     vga << vga.endl;
-    vga << "=== P4 Page Table ===" << vga.endl;
-    P4Table* p4 = c3::get();
 
-    // Print with different recursion levels:
-    // 0 = P4 only
-    // 1 = P4 -> P3
-    // 2 = P4 -> P3 -> P2
-    // 3 = P4 -> P3 -> P2 -> P1 (full tree)
-    // -1 = all levels (same as 3)
+    vga << "=== P4 Page Table (Recursive) ===" << vga.endl;
+    paging::P4Table* p4 = c3::get();
     p4->print(vga, 1);
-
-    // Initialize frame allocator
-    vga << vga.endl;
-    vga << "=== Frame Allocator ===" << vga.endl;
-
-    if (boot_info->has_elf_sections() && boot_info->has_memory_map()) {
-        auto elf = boot_info->get_elf_sections();
-        uint64_t kernel_start = UINT64_MAX;
-        uint64_t kernel_end = 0;
-
-        for (auto section = elf->sections_begin(); section != elf->sections_end(); ++section) {
-            if (section->size == 0) continue;
-            if (section->addr < kernel_start) kernel_start = section->addr;
-            if (section->addr + section->size > kernel_end) kernel_end = section->addr + section->size;
-        }
-
-        uint64_t multiboot_start = (uint64_t)mb_info_addr;
-        uint64_t multiboot_end = multiboot_start + boot_info->get_total_size();
-
-        auto mmap = boot_info->get_memory_map();
-        AreaFrameAllocator allocator(mmap, kernel_start, kernel_end, multiboot_start, multiboot_end);
-
-        vga << "Allocating all available frames..." << vga.endl;
-
-        uint64_t count = 0;
-        Frame last_frame;
-
-        while (true) {
-            Frame frame = allocator.allocate_frame();
-            if (frame.number == 0 && count > 0) {
-                // Out of memory (frame 0 with number==0 after allocating others means OOM)
-                break;
-            }
-            last_frame = frame;
-            count++;
-
-            // Print progress every 1024 frames to avoid too much output
-            if (count % 1024 == 0) {
-                vga << "  Allocated " << count << " frames..." << vga.endl;
-            }
-        }
-
-        vga << "Total frames allocated: " << count << vga.endl;
-        vga << "Last frame: #" << last_frame.number << " (0x" << last_frame.start_address() << ")" << vga.endl;
-        vga << "Total memory allocated: " << (count * PAGE_SIZE) / 1024 / 1024 << " MB" << vga.endl;
-    }
-
 }

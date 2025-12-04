@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include "AreaFrameIterator.h"
+#include "paging/Page.h"
 
 // Forward declarations
 struct Multiboot2TagMmap;
@@ -22,10 +23,10 @@ private:
     const MemoryArea* current_area;
     AreaFrameIterator current_iterator;
     bool has_valid_iterator;
-    uint64_t kernel_start;
-    uint64_t kernel_end;
-    uint64_t multiboot_start;
-    uint64_t multiboot_end;
+    PhysicalAddress kernel_start;
+    PhysicalAddress kernel_end;
+    PhysicalAddress multiboot_start;
+    PhysicalAddress multiboot_end;
 
     /**
      * Find next available area and update current iterator
@@ -43,10 +44,10 @@ public:
      */
     AreaFrameAllocator(
         const Multiboot2TagMmap* mmap,
-        uint64_t kernel_start,
-        uint64_t kernel_end,
-        uint64_t multiboot_start,
-        uint64_t multiboot_end
+        PhysicalAddress kernel_start,
+        PhysicalAddress kernel_end,
+        PhysicalAddress multiboot_start,
+        PhysicalAddress multiboot_end
     );
 
     /**

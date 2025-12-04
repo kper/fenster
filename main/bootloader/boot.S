@@ -100,6 +100,10 @@ check_long_mode:
 
 
 set_up_page_tables:
+    # recursive map P4 last entry to P4
+    movl    $p4_table, %eax
+    orl     $0b11, %eax             # present + writable
+    movl    %eax, p4_table + 511*8
     
     # map first P4 entry to P3 table
     movl $p3_table, %eax

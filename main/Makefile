@@ -40,8 +40,8 @@ SOURCES_CPP := \
     gdt.cpp \
     idt.cpp \
     bootinfo.cpp \
-    paging/PageTableEntry.cpp \
-    paging/PageTable.cpp \
+    paging/Entry.cpp \
+    paging/Table.cpp \
     memory/AreaFrameIterator.cpp \
     memory/frame_allocator.cpp \
     main.cpp

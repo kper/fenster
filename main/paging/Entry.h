@@ -7,13 +7,18 @@
 
 #include <stdint.h>
 
+#include "Page.h"
+
 class VgaOutStream;
+
+namespace paging {
+
 
 /**
  * x86-64 Page Table Entry
  * Represents a single entry in any level of the page table hierarchy (P4/P3/P2/P1)
  */
-class PageTableEntry {
+class Entry {
 private:
     uint64_t entry;
 
@@ -32,8 +37,8 @@ public:
         NO_EXECUTE     = 1ULL << 63 // Disable execution
     };
 
-    PageTableEntry() : entry(0) {}
-    explicit PageTableEntry(uint64_t value) : entry(value) {}
+    Entry() : entry(0) {}
+    explicit Entry(uint64_t value) : entry(value) {}
 
     // Flag checking
     bool is_present() const { return entry & PRESENT; }
@@ -52,16 +57,16 @@ public:
     void set_no_execute(bool value) { set_flag(NO_EXECUTE, value); }
 
     // Physical address (bits 12-51)
-    uint64_t get_address() const {
+    PhysicalAddress get_address() const {
         return entry & 0x000FFFFFFFFFF000ULL;
     }
 
-    void set_address(uint64_t addr) {
+    void set_address(PhysicalAddress addr) {
         entry = (entry & 0xFFF0000000000FFFULL) | (addr & 0x000FFFFFFFFFF000ULL);
     }
 
     // Set address and flags in one operation
-    void set(uint64_t addr, uint64_t flags) {
+    void set(PhysicalAddress addr, uint64_t flags) {
         entry = (addr & 0x000FFFFFFFFFF000ULL) | (flags & 0xFFF0000000000FFFULL);
     }
 
@@ -71,13 +76,6 @@ public:
 
     // Clear entry
     void clear() { entry = 0; }
-
-    // Get pointer to next level page table (for P4/P3/P2 entries)
-    template<typename T>
-    T* get_next_table() const {
-        if (!is_present()) return nullptr;
-        return reinterpret_cast<T*>(get_address());
-    }
 
     // Print entry
     void print(VgaOutStream& stream) const;
@@ -92,6 +90,9 @@ private:
     }
 } __attribute__((packed));
 
-static_assert(sizeof(PageTableEntry) == 8, "PageTableEntry must be 8 bytes");
+static_assert(sizeof(Entry) == 8, "PageTableEntry must be 8 bytes");
+
+}
 
 #endif //MAIN_PAGEENTRY_H
+

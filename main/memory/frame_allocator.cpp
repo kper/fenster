@@ -8,10 +8,10 @@
 
 AreaFrameAllocator::AreaFrameAllocator(
     const Multiboot2TagMmap* mmap,
-    uint64_t kernel_start,
-    uint64_t kernel_end,
-    uint64_t multiboot_start,
-    uint64_t multiboot_end
+    PhysicalAddress kernel_start,
+    PhysicalAddress kernel_end,
+    PhysicalAddress multiboot_start,
+    PhysicalAddress multiboot_end
 )
     : mmap(mmap)
     , current_area(nullptr)
