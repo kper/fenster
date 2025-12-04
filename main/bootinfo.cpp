@@ -55,6 +55,10 @@ bool BootInfo::has_memory_map() const {
     return find_tag(Multiboot2Tag::MMAP) != nullptr;
 }
 
+bool BootInfo::has_elf_sections() const {
+    return find_tag(Multiboot2Tag::ELF_SECTIONS) != nullptr;
+}
+
 const char* BootInfo::get_cmdline() const {
     auto tag = static_cast<const Multiboot2TagString*>(find_tag(Multiboot2Tag::CMDLINE));
     return tag ? tag->get_string() : nullptr;
@@ -83,6 +87,10 @@ uint64_t BootInfo::get_total_memory() const {
 
 const Multiboot2TagMmap* BootInfo::get_memory_map() const {
     return static_cast<const Multiboot2TagMmap*>(find_tag(Multiboot2Tag::MMAP));
+}
+
+const Multiboot2TagElfSections* BootInfo::get_elf_sections() const {
+    return static_cast<const Multiboot2TagElfSections*>(find_tag(Multiboot2Tag::ELF_SECTIONS));
 }
 
 void BootInfo::print(VgaOutStream& stream) const {
@@ -119,6 +127,7 @@ void BootInfo::print(VgaOutStream& stream) const {
         stream << "Memory Map:" << VgaOutStream::endl;
         auto mmap = get_memory_map();
         for (auto entry = mmap->entries_begin(); entry != mmap->entries_end(); ++entry) {
+            if (!entry->is_available()) continue;
             stream << "  0x";
             stream << entry->addr << " - 0x";
             stream << (entry->addr + entry->len) << " (";
@@ -142,4 +151,26 @@ void BootInfo::print(VgaOutStream& stream) const {
             stream << VgaOutStream::endl;
         }
     }
+
+    // stream << VgaOutStream::endl;
+    //
+    // // ELF sections
+    // if (has_elf_sections()) {
+    //     stream << "Kernel Sections:" << VgaOutStream::endl;
+    //     auto elf = get_elf_sections();
+    //     for (auto section = elf->sections_begin(); section != elf->sections_end(); ++section) {
+    //         // Skip sections with no size
+    //         if (section->size == 0) continue;
+    //
+    //         const char* name = elf->get_section_name(section);
+    //         stream << "  " << (name ? name : "(unnamed)");
+    //         stream << " @ 0x" << section->addr;
+    //         stream << " size=" << section->size;
+    //         stream << " flags=";
+    //         if (section->flags & 0x1) stream << "W";
+    //         if (section->flags & 0x2) stream << "A";
+    //         if (section->flags & 0x4) stream << "X";
+    //         stream << VgaOutStream::endl;
+    //     }
+    // }
 }

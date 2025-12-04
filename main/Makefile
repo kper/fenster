@@ -22,12 +22,13 @@ CXX := zig c++
 AS  := zig cc
 endif
 
+DEBUG    := # can be set to -g for debug symbols
 CFLAGS   := -target $(TARGET_ARCH) -ffreestanding -nostdlib -fno-sanitize=all -mgeneral-regs-only -Wall -Wextra -Wno-unused-parameter
 # Preprocessor flags (include current dir); extend as needed
 CPPFLAGS := -I .
-CXXFLAGS := $(CFLAGS) -std=gnu++17 -fno-exceptions -fno-rtti -g
-ASFLAGS  := -target $(TARGET_ARCH) -ffreestanding -nostdlib -fno-sanitize=all -mgeneral-regs-only -g
-LDFLAGS  := -target $(TARGET_ARCH) -nostdlib -ffreestanding -fno-sanitize=all -T linker.ld -g
+CXXFLAGS := $(CFLAGS) -std=gnu++17 -fno-exceptions -fno-rtti -O2 $(DEBUG)
+ASFLAGS  := -target $(TARGET_ARCH) -ffreestanding -nostdlib -fno-sanitize=all -mgeneral-regs-only $(DEBUG)
+LDFLAGS  := -target $(TARGET_ARCH) -nostdlib -ffreestanding -fno-sanitize=all -T linker.ld $(DEBUG)
 
 ###############################
 # Sources & objects
@@ -41,6 +42,8 @@ SOURCES_CPP := \
     bootinfo.cpp \
     paging/PageTableEntry.cpp \
     paging/PageTable.cpp \
+    memory/AreaFrameIterator.cpp \
+    memory/frame_allocator.cpp \
     main.cpp
 
 SOURCES_ASM := \
