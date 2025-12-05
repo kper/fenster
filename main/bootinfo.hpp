@@ -2,6 +2,8 @@
 #define MAIN_BOOTINFO_H
 #include <stdint.h>
 
+#include "runtime/optional.h"
+
 class VgaOutStream;
 
 /**
@@ -156,7 +158,8 @@ public:
     uint32_t get_mem_upper() const;
     uint64_t get_total_memory() const;
     const Multiboot2TagMmap* get_memory_map() const;
-    const Multiboot2TagElfSections* get_elf_sections() const;
+
+    rnt::Optional<const Multiboot2TagElfSections *> get_elf_sections() const;
 
     void print(VgaOutStream& stream) const;
 

@@ -141,8 +141,8 @@ extern "C" void kernel_main(void *mb_info_addr)
     using vga::out;
 
     auto allocator = memory::AreaFrameAllocator::from_boot_info(*boot_info);
-
-
+    paging::remap_the_kernel(allocator, *boot_info);
+    out << "We are still alive!" << out.endl;
 
 }
 

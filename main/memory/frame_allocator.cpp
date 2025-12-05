@@ -44,8 +44,9 @@ namespace memory {
     AreaFrameAllocator AreaFrameAllocator::from_boot_info(const BootInfo &boot_info) {
         uint64_t kernel_start = UINT64_MAX;
         uint64_t kernel_end = 0;
-        if (boot_info.has_elf_sections()) {
-            const auto elf = boot_info.get_elf_sections();
+        auto elf_sections = boot_info.get_elf_sections();
+        if (elf_sections.has_value()) {
+            const auto elf = elf_sections.value();
 
             for (auto section = elf->sections_begin(); section != elf->sections_end(); ++section) {
                 if (section->size == 0) continue;

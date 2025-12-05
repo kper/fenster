@@ -1,5 +1,13 @@
 #include "bootinfo.hpp"
 #include "vga.hpp"
+#include "runtime/optional.h"
+
+const Multiboot2Tag* Multiboot2Tag::next() const {
+    uint32_t aligned_size = (size + 7) & ~7;  // Align to 8 bytes
+    return reinterpret_cast<const Multiboot2Tag*>(
+        reinterpret_cast<uintptr_t>(this) + aligned_size
+    );
+}
 
 void BootInfo::print_size(VgaOutStream& stream, uint64_t bytes) {
     uint64_t kb = bytes / 1024;
@@ -13,13 +21,6 @@ void BootInfo::print_size(VgaOutStream& stream, uint64_t bytes) {
     } else {
         stream << kb << " KB";
     }
-}
-
-const Multiboot2Tag* Multiboot2Tag::next() const {
-    uint32_t aligned_size = (size + 7) & ~7;  // Align to 8 bytes
-    return reinterpret_cast<const Multiboot2Tag*>(
-        reinterpret_cast<uintptr_t>(this) + aligned_size
-    );
 }
 
 const Multiboot2Tag* BootInfo::tags_begin() const {
@@ -89,7 +90,10 @@ const Multiboot2TagMmap* BootInfo::get_memory_map() const {
     return static_cast<const Multiboot2TagMmap*>(find_tag(Multiboot2Tag::MMAP));
 }
 
-const Multiboot2TagElfSections* BootInfo::get_elf_sections() const {
+rnt::Optional<const Multiboot2TagElfSections *> BootInfo::get_elf_sections() const {
+    if (!has_elf_sections()) {
+        return rnt::Optional<const Multiboot2TagElfSections *>();
+    }
     return static_cast<const Multiboot2TagElfSections*>(find_tag(Multiboot2Tag::ELF_SECTIONS));
 }
 

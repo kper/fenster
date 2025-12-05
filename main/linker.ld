@@ -50,5 +50,15 @@ SECTIONS
 
         _stack_top = .;
     }
+
+    .debug_sections (NOLOAD) : ALIGN(4K) {
+        *(.eh_frame*)
+        *(.eh_frame_hdr*)
+        *(.comment*)
+        *(.debug*)
+        *(.symtab*)
+        *(.strtab*)
+        *(.shstrtab*)
+    }
 }
 

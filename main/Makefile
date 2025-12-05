@@ -22,7 +22,7 @@ CXX := zig c++
 AS  := zig cc
 endif
 
-DEBUG    := -g # can be set to -g for debug symbols
+DEBUG    := -g0 # can be set to -g for debug symbols
 CFLAGS   := -target $(TARGET_ARCH) -ffreestanding -nostdlib -fno-sanitize=all -mgeneral-regs-only -Wall -Wextra -Wno-unused-parameter
 # Preprocessor flags (include current dir); extend as needed
 CPPFLAGS := -I .

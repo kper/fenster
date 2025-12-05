@@ -6,6 +6,7 @@
 #define MAIN_UTILS_H
 #include "move.h"
 #include "new.h"
+#include "panic.h"
 
 namespace rnt {
     template<typename T>
@@ -29,9 +30,10 @@ namespace rnt {
             }
         }
 
-        Optional(Optional&& other) : has_(other.has_) {
+        Optional(Optional&& other) : has_(false) {
             if (other.has_) {
                 new (storage_) T(rnt::move(*other.ptr()));  // move-propagated
+                has_ = true;
                 other.reset();
             }
         }
@@ -63,6 +65,12 @@ namespace rnt {
 
         bool has_value() const { return has_; }
         bool is_empty() const { return !has_value(); }
+        T& expect(const char* message) {
+            if (!has_value()) {
+                PANIC(message);
+            }
+            return value();
+        }
 
         T&       value()       { return *ptr(); }
         const T& value() const { return *ptr(); }
