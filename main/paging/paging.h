@@ -49,6 +49,7 @@ namespace paging {
         static PageFlags kernel_readwrite();
         static PageFlags user_readonly();
         static PageFlags user_readwrite();
+        static PageFlags from_elf_section(const Multiboot2ElfSection& elf_section);
     };
 
     struct Page {
@@ -155,10 +156,10 @@ namespace paging {
 
     class InactivePageTable {
         // frame which contains the inactive table
-        memory::Frame p4_frame;
         friend ActivePageTable;
 
         public:
+        memory::Frame p4_frame;
         explicit InactivePageTable(memory::Frame frame, ActivePageTable& active_table, TemporaryPage& temporary_page): p4_frame(frame) {
             // Create a p4 table frame on the temporary page (temporary page is only used to access the frame)
             auto table = temporary_page.map_table_frame(frame, active_table);

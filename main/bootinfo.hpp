@@ -103,6 +103,13 @@ struct Multiboot2ElfSection {
     uint32_t info;       // Additional section information
     uint64_t addralign;  // Section alignment
     uint64_t entsize;    // Entry size if section holds table
+
+    // ELF section flags
+    static constexpr uint64_t SHF_ALLOC = 0x2;  // Section occupies memory during execution
+
+    bool is_allocated() const {
+        return flags & SHF_ALLOC;
+    }
 } __attribute__((packed));
 
 struct Multiboot2TagElfSections : public Multiboot2Tag {

@@ -25,15 +25,16 @@ namespace paging {
 
 
         active_table.with(new_table, temp_page, [&boot_info, &allocator](ActivePageTable& map) {
+            // identiy map kernel elf
             auto elf = boot_info.get_elf_sections().expect("Elf sections required");
             for (auto section = elf->sections_begin(); section != elf->sections_end(); ++section) {
-                if (section->size == 0) {
+                if (!section->is_allocated()) {
                     continue;
                 }
-                out << "Processing " << elf->get_section_name(section) << "\n";
                 ASSERT(section->addr % PAGE_SIZE == 0, "Elf sections must be page alined");
-                out << "mapping section at addr: " << hex << section->addr << ", size: " << size << section->size << out.endl;
-                auto flags = PageFlags{.writable = true};
+                out << "mapping section " << elf->get_section_name(section) << " at addr: " << hex << section->addr << ", size: " << size << section->size << out.endl;
+                auto flags = PageFlags::from_elf_section(*section);
+                // auto flags = PageFlags();
 
                 auto start_frame = memory::Frame::containing_address(section->addr);
                 auto end_frame = memory::Frame::containing_address(section->addr + section->size - 1);
@@ -43,12 +44,35 @@ namespace paging {
                 }
             }
 
-            // identity map the VGA text buffer
+            // identity map multiboot information
+            auto multiboot_start = reinterpret_cast<uint64_t>(&boot_info);
+            auto multiboot_end   = multiboot_start + boot_info.get_total_size();
+            auto start_frame = memory::Frame::containing_address(multiboot_start);
+            auto end_frame = memory::Frame::containing_address(multiboot_end);
+            for (uint64_t i = start_frame.number; i <= end_frame.number; ++i) {
+                auto frame = memory::Frame(i);
+                if (map.translate(frame.start_address()).has_value()) {
+                    // already mapped as part of kernel
+                    continue;
+                }
+                map.identity_map(frame, PageFlags {}, allocator);
+            }
+
+            // identity maps the VGA text buffer
             auto vga_buffer_frame = memory::Frame::containing_address(0xb8000); // new
             map.identity_map(vga_buffer_frame, PageFlags {.writable = true}, allocator); // new
         });
 
+        // swap the active table and the new table
         active_table.swap(new_table);
+
+        // because of swap, the new_table is now actually the old table
+        auto old_table = new_table;
+        // we reuse the old p4_frame (which is below the stack bottom)
+        // as a guard page that is unmapped and would cause a page fault
+        // instead of silently corrupting the .bss data
+        auto old_p4_page = Page::containing_address(old_table.p4_frame.start_address());
+        active_table.unmap(old_p4_page, allocator);
     }
 
 
@@ -83,6 +107,27 @@ namespace paging {
         PageFlags flags;
         flags.writable = true;
         flags.user_accessible = true;
+        return flags;
+    }
+
+    PageFlags PageFlags::from_elf_section(const Multiboot2ElfSection& elf_section) {
+        // ELF section flags (from ELF specification)
+        constexpr uint64_t SHF_WRITE = 0x1;      // Writable
+        constexpr uint64_t SHF_EXECINSTR = 0x4;  // Executable
+
+        PageFlags flags;
+
+        // If section has SHF_WRITE flag, make it writable
+        if (elf_section.flags & SHF_WRITE) {
+            flags.writable = true;
+        }
+
+        // If section does NOT have SHF_EXECINSTR flag, set no_execute
+        // (x86-64 uses NX bit, so executable sections should NOT have no_execute set)
+        if (!(elf_section.flags & SHF_EXECINSTR)) {
+            flags.no_execute = true;
+        }
+
         return flags;
     }
 

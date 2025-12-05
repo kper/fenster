@@ -121,6 +121,11 @@ extern "C" void kernel_main(void *mb_info_addr)
     
     interrupts_enable();
 
+    // enable NO-EXECUTE bit for pages
+    efer::enable_nxe_bit();
+    // enable WRITE project bit for pages
+    cr0::enable_write_protect();
+
     vga::out.clear();
     vga::out << GREEN << "Kernel setup complete" << WHITE << vga::out.endl;
 
@@ -143,9 +148,11 @@ extern "C" void kernel_main(void *mb_info_addr)
 
     auto allocator = memory::AreaFrameAllocator::from_boot_info(*boot_info);
     paging::remap_the_kernel(allocator, *boot_info);
-    out << "We are still alive!" << out.endl;
 
     page_table.print(out, -1);
+
+    // allocator.allocate_frame();
+    out << "We are still alive!" << out.endl;
 }
 
 void allocation_test(memory::FrameAllocator &allocator) {
