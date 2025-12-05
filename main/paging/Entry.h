@@ -48,6 +48,7 @@ public:
     bool is_accessed() const { return entry & ACCESSED; }
     bool is_dirty() const { return entry & DIRTY; }
     bool is_executable() const { return !(entry & NO_EXECUTE); }
+    bool is_unused() const { return entry == 0; }
 
     // Flag setting
     void set_present(bool value) { set_flag(PRESENT, value); }

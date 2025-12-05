@@ -42,6 +42,7 @@ SOURCES_CPP := \
     bootinfo.cpp \
     paging/Entry.cpp \
     paging/Table.cpp \
+    paging/paging.cpp \
     memory/AreaFrameIterator.cpp \
     memory/frame_allocator.cpp \
     runtime.cpp \

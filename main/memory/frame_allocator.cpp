@@ -69,7 +69,7 @@ void AreaFrameAllocator::advance_to_next_area() {
     current_area = nullptr;
 }
 
-paging::Frame AreaFrameAllocator::allocate_frame() {
+memory::Frame AreaFrameAllocator::allocate_frame() {
     // Keep trying until we find a frame or run out of areas
     while (has_valid_iterator) {
         if (current_iterator.has_next()) {
@@ -81,10 +81,10 @@ paging::Frame AreaFrameAllocator::allocate_frame() {
     }
 
     // Out of memory
-    return paging::Frame(0);
+    return memory::Frame(0);
 }
 
-void AreaFrameAllocator::deallocate_frame(paging::Frame frame) {
+void AreaFrameAllocator::deallocate_frame(memory::Frame frame) {
     // TODO: Implement deallocation with bitmap
     // For now, this is a no-op as we have a bump allocator
     (void)frame;  // Suppress unused parameter warning

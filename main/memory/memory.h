@@ -6,49 +6,14 @@
 #define MAIN_MEMORY_H
 
 #include <stdint.h>
+#include "frame.h"
+#include "paging/paging.h"
 #include "paging/Table.h"
 #include "paging/Entry.h"
 #include "paging/c3.h"
 #include "panic.h"
 
-using PhysicalAddress = uint64_t;
-
-namespace paging {
-    constexpr uint64_t PAGE_SIZE = 4096;
-    struct Page;
-}
-
 namespace memory {
-
-/**
- * Represents a physical memory frame (4KB page)
- */
-struct Frame {
-    uint64_t number;
-
-    Frame() : number(0) {}
-    explicit Frame(uint64_t num) : number(num) {}
-
-    uint64_t start_address() const {
-        return paging::PAGE_SIZE * number;
-    }
-
-    static Frame containing_address(PhysicalAddress addr) {
-        return Frame(addr / paging::PAGE_SIZE);
-    }
-
-    Frame clone() const {
-        return Frame(number);
-    }
-
-    bool operator==(const Frame& other) const {
-        return number == other.number;
-    }
-
-    bool operator!=(const Frame& other) const {
-        return number != other.number;
-    }
-};
 
 /**
  * Map a virtual page to a physical frame with specified flags
@@ -60,7 +25,7 @@ struct Frame {
  * @param allocator Frame allocator for creating intermediate tables
  */
 template<typename Allocator>
-void map_to(paging::Page page, paging::Frame frame, uint64_t flags, Allocator& allocator) {
+void map_to(paging::Page page, Frame frame, uint64_t flags, Allocator& allocator) {
     using namespace paging;
 
     // Get P4 table

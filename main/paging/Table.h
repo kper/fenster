@@ -14,9 +14,6 @@ class VgaOutStream;
 
 namespace paging {
 
-// Forward declaration
-struct Frame;
-
 // Recursive page table constants
 // With P4[511] pointing to P4 itself, we can access all page tables through these addresses
 constexpr uint64_t RECURSIVE_INDEX = 511;

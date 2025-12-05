@@ -6,10 +6,9 @@
 #define MAIN_AREA_FRAME_ITERATOR_H
 
 #include <stdint.h>
+#include "frame.h"
 
-#include "paging/paging.h"
-
-// Forward declaration
+// Forward declarations
 struct MemoryArea;
 
 /**
@@ -57,7 +56,7 @@ public:
 
     bool has_next() const;
 
-    paging::Frame next();
+    memory::Frame next();
 };
 
 #endif //MAIN_AREA_FRAME_ITERATOR_H
