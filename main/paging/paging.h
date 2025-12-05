@@ -126,7 +126,8 @@ namespace paging {
      * by the TemporaryPage.
      */
     class TinyAllocator: public memory::FrameAllocator {
-        rnt::Optional<memory::Frame> frames[3];
+        memory::Frame frames[3];
+        bool          available[3];
 
     public:
         TinyAllocator(FrameAllocator& allocator);

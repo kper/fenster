@@ -24,10 +24,10 @@ void print_stack_frame(InterruptStackFrame *frame) {
     vga::out << YELLOW;
     vga::out << "ExceptionStackFrame {" << vga::out.endl;
 
-    vga::out << "  " << "instruction_pointer: " << frame->rip << vga::out.endl;
+    vga::out << "  " << "instruction_pointer: " << hex << frame->rip << vga::out.endl;
     vga::out << "  " << "code_segment: " << frame->cs << vga::out.endl;
     vga::out << "  " << "cpu_flags: " << frame->rflags << vga::out.endl;
-    vga::out << "  " << "stack_pointer: " << frame->rsp << vga::out.endl;
+    vga::out << "  " << "stack_pointer: " << hex << frame->rsp << vga::out.endl;
     vga::out << "  " << "stack_segment: " << frame->ss << vga::out.endl;
 
     vga::out << "}" << vga::out.endl;

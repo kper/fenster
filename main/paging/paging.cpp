@@ -202,28 +202,31 @@ namespace paging {
      * by the TemporaryPage.
      */
     TinyAllocator::TinyAllocator(FrameAllocator& allocator) {
-        frames[0] = allocator.allocate_frame();
-        frames[1] = allocator.allocate_frame();
-        frames[2] = allocator.allocate_frame();
+        for (int i = 0; i < 3; i++) {
+            frames[i] = allocator.allocate_frame().expect("Out of memory");
+            available[i] = true;
+        }
     }
 
     rnt::Optional<memory::Frame> TinyAllocator::allocate_frame() {
         for (int i = 0; i < 3; i++) {
-            if (frames[i].has_value()) {
-                return rnt::move(frames[i]);
+            if (available[i]) {
+                available[i] = false;
+                return frames[i];
             }
         }
         return rnt::Optional<memory::Frame>();
     }
 
     void TinyAllocator::deallocate_frame(memory::Frame frame) {
+        // we take back only the frames we own
         for (int i = 0; i < 3; i++) {
-            if (frames[i].is_empty()) {
-                frames[i] = frame;
+            if (frames[i].number == frame.number) {
+                ASSERT(!available[i], "Frame was already deallocated");
+                available[i] = true;
                 return;
             }
         }
-        PANIC("Tiny allocator can hold only 3 frames.");
     }
 
 
