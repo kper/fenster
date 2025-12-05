@@ -175,12 +175,22 @@ void VgaOutStream::newline()
 
 void VgaOutStream::scroll()
 {
-    for (int y = 1; y <= height; y++)
+    // Shift rows 1..height-1 up to 0..height-2
+    for (int y = 1; y < height; ++y)
     {
-        for (int x = 0; x < width * 2; x++)
+        for (int x = 0; x < width * 2; ++x)
         {
             vgaBuffer[(y - 1) * (width * 2) + x] = vgaBuffer[y * (width * 2) + x];
         }
+    }
+
+    // Clear last row (row height-1) with spaces and current attribute
+    const int row_start = (height - 1) * (width * 2);
+    for (int x = 0; x < width; ++x)
+    {
+        vgaBuffer[row_start + x * 2]     = ' ';
+        int attr = (format.background << 4) | (format.foreground & 0x0F);
+        vgaBuffer[row_start + x * 2 + 1] = attr;
     }
 }
 

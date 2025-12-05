@@ -29,6 +29,10 @@ namespace c3 {
         return cr3_value & 0x000FFFFFFFFFF000ULL;
     }
 
+    inline memory::Frame get_frame() {
+        return memory::Frame::containing_address(get_phys_addr());
+    }
+
     /**
      * Set the physical address to a new P4 Table
      * This will flush the TLB (Translation Lookaside Buffer)

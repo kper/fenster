@@ -144,6 +144,7 @@ extern "C" void kernel_main(void *mb_info_addr)
     paging::remap_the_kernel(allocator, *boot_info);
     out << "We are still alive!" << out.endl;
 
+    page_table.print(out, -1);
 }
 
 void allocation_test(memory::FrameAllocator &allocator) {

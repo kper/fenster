@@ -13,6 +13,7 @@
 namespace paging {
 
     void remap_the_kernel(memory::FrameAllocator &allocator, BootInfo &boot_info) {
+        using vga::out;
         auto temp_raw_page = Page(0xcafebabe);
         auto temp_page = TemporaryPage(temp_raw_page, allocator);
 
@@ -22,13 +23,13 @@ namespace paging {
         auto new_table_frame = allocator.allocate_frame().expect("Out of memory");
         auto new_table = InactivePageTable(new_table_frame, active_table, temp_page);
 
+
         active_table.with(new_table, temp_page, [&boot_info, &allocator](ActivePageTable& map) {
             auto elf = boot_info.get_elf_sections().expect("Elf sections required");
             for (auto section = elf->sections_begin(); section != elf->sections_end(); ++section) {
                 if (section->size == 0) {
                     continue;
                 }
-                using vga::out;
                 out << "Processing " << elf->get_section_name(section) << "\n";
                 ASSERT(section->addr % PAGE_SIZE == 0, "Elf sections must be page alined");
                 out << "mapping section at addr: " << hex << section->addr << ", size: " << size << section->size << out.endl;
@@ -41,7 +42,13 @@ namespace paging {
                     map.identity_map(frame, flags, allocator);
                 }
             }
+
+            // identity map the VGA text buffer
+            auto vga_buffer_frame = memory::Frame::containing_address(0xb8000); // new
+            map.identity_map(vga_buffer_frame, PageFlags {.writable = true}, allocator); // new
         });
+
+        active_table.swap(new_table);
     }
 
 
@@ -141,6 +148,15 @@ namespace paging {
         // flush the lookaside buffer (TLB)
         c3::flush();
     }
+
+    void ActivePageTable::swap(InactivePageTable& inactive_page_table) {
+        auto p4_frame = c3::get_frame();
+        auto new_p4_frame = inactive_page_table.p4_frame;
+        inactive_page_table.p4_frame = p4_frame;
+        c3::set_phys_addr(new_p4_frame.start_address());
+        c3::flush();
+    }
+
 
 
     rnt::Optional<memory::Frame> ActivePageTable::translate_page(Page page) {

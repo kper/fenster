@@ -10,6 +10,7 @@
 #include "Entry.h"
 #include "Table.h"
 #include "Entry.h"
+#include "paging.h"
 #include "vga.hpp"
 #include "memory/frame.h"
 #include "memory/frame_allocator.h"
@@ -106,6 +107,12 @@ namespace paging {
 
         // Unmap a page
         void unmap(Page page, memory::FrameAllocator& allocator);
+
+        // Swaps the internal P4 table pointer between the active page and the
+        // given inactive one. After this operation,
+        // the active table will point to the previously inactive page table
+        // and the inactive one to the previously active one
+        void swap(InactivePageTable& inactive_page_table);
 
         template<typename F>
         void with(InactivePageTable& table, TemporaryPage& temporary_page, F&& f);
