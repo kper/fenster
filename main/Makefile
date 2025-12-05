@@ -44,6 +44,8 @@ SOURCES_CPP := \
     paging/Table.cpp \
     memory/AreaFrameIterator.cpp \
     memory/frame_allocator.cpp \
+    runtime.cpp \
+    panic.cpp \
     main.cpp
 
 SOURCES_ASM := \

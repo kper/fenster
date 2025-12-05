@@ -10,7 +10,7 @@
 #include "paging/c3.h"
 #include "memory/frame_allocator.h"
 
-static VgaOutStream vga = VgaOutStream();
+VgaOutStream vga = VgaOutStream();
 static GDT gdt = GDT();
 static IDT idt = IDT();
 static ChainedPICs pics = ChainedPICs();

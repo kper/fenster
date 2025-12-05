@@ -6,12 +6,49 @@
 #define MAIN_MEMORY_H
 
 #include <stdint.h>
-#include "paging/paging.h"
 #include "paging/Table.h"
 #include "paging/Entry.h"
 #include "paging/c3.h"
+#include "panic.h"
+
+using PhysicalAddress = uint64_t;
+
+namespace paging {
+    constexpr uint64_t PAGE_SIZE = 4096;
+    struct Page;
+}
 
 namespace memory {
+
+/**
+ * Represents a physical memory frame (4KB page)
+ */
+struct Frame {
+    uint64_t number;
+
+    Frame() : number(0) {}
+    explicit Frame(uint64_t num) : number(num) {}
+
+    uint64_t start_address() const {
+        return paging::PAGE_SIZE * number;
+    }
+
+    static Frame containing_address(PhysicalAddress addr) {
+        return Frame(addr / paging::PAGE_SIZE);
+    }
+
+    Frame clone() const {
+        return Frame(number);
+    }
+
+    bool operator==(const Frame& other) const {
+        return number == other.number;
+    }
+
+    bool operator!=(const Frame& other) const {
+        return number != other.number;
+    }
+};
 
 /**
  * Map a virtual page to a physical frame with specified flags
@@ -23,7 +60,7 @@ namespace memory {
  * @param allocator Frame allocator for creating intermediate tables
  */
 template<typename Allocator>
-bool map_to(paging::Page page, paging::Frame frame, uint64_t flags, Allocator& allocator) {
+void map_to(paging::Page page, paging::Frame frame, uint64_t flags, Allocator& allocator) {
     using namespace paging;
 
     // Get P4 table
@@ -31,24 +68,20 @@ bool map_to(paging::Page page, paging::Frame frame, uint64_t flags, Allocator& a
 
     // Walk down the page table hierarchy, creating tables as needed
     P3Table* p3 = p4->next_table_create(page.p4_index(), allocator);
-    if (!p3) return false;  // Out of memory
+    ASSERT(p3 != nullptr, "Out of memory allocating P3 table");
 
     P2Table* p2 = p3->next_table_create(page.p3_index(), allocator);
-    if (!p2) return false;  // Out of memory
+    ASSERT(p2 != nullptr, "Out of memory allocating P2 table");
 
     P1Table* p1 = p2->next_table_create(page.p2_index(), allocator);
-    if (!p1) return false;  // Out of memory
+    ASSERT(p1 != nullptr, "Out of memory allocating P1 table");
 
     // Verify the entry is unused
     Entry& entry = (*p1)[page.p1_index()];
-    if (!entry.is_unused()) {
-        // Entry already in use - this is an error condition
-        return false;
-    }
+    ASSERT(entry.is_unused(), "Page already mapped");
 
     // Set the entry to map to the frame with PRESENT flag
     entry.set(frame.start_address(), flags | Entry::PRESENT);
-    return true;
 }
 
 }
