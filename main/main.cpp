@@ -7,9 +7,10 @@
 #include "pic.hpp"
 #include "idt.hpp"
 #include "bootinfo.hpp"
-#include "paging/c3.h"
+#include "paging/cr3.h"
 #include "memory/frame_allocator.h"
 #include "paging/paging.h"
+#include "x86/regs.h"
 
 static GDT gdt = GDT();
 static IDT idt = IDT();
@@ -29,7 +30,7 @@ void print_stack_frame(InterruptStackFrame *frame) {
     vga::out << "  " << "cpu_flags: " << frame->rflags << vga::out.endl;
     vga::out << "  " << "stack_pointer: " << hex << frame->rsp << vga::out.endl;
     vga::out << "  " << "stack_segment: " << frame->ss << vga::out.endl;
-
+    vga::out << "  " << "page_fault_linear_addres: " << hex << cr2::get_pfla() << vga::out.endl;
     vga::out << "}" << vga::out.endl;
     vga::out << orig;
 }

@@ -5,7 +5,7 @@
 #include "paging.h"
 #include "Table.h"
 #include "Entry.h"
-#include "c3.h"
+#include "cr3.h"
 #include "panic.h"
 #include "vga.hpp"
 #include "memory/frame.h"
@@ -146,22 +146,22 @@ namespace paging {
         entry.clear();
         allocator.deallocate_frame(frame);
         // flush the lookaside buffer (TLB)
-        c3::flush();
+        cr3::flush();
     }
 
     void ActivePageTable::swap(InactivePageTable& inactive_page_table) {
-        auto p4_frame = c3::get_frame();
+        auto p4_frame = cr3::get_frame();
         auto new_p4_frame = inactive_page_table.p4_frame;
         inactive_page_table.p4_frame = p4_frame;
-        c3::set_phys_addr(new_p4_frame.start_address());
-        c3::flush();
+        cr3::set_phys_addr(new_p4_frame.start_address());
+        cr3::flush();
     }
 
 
 
     rnt::Optional<memory::Frame> ActivePageTable::translate_page(Page page) {
         // Walk through the page table hierarchy
-        P4Table* p4 = c3::get_virt_p4_table();
+        P4Table* p4 = cr3::get_virt_p4_table();
 
         // Get P3 table
         P3Table* p3 = p4->get_next_table(page.p4_index());
@@ -197,19 +197,23 @@ namespace paging {
 
     template<typename F>
     void ActivePageTable::with(InactivePageTable& table, TemporaryPage& temporary_page, F&& f) {
-        auto backup = memory::Frame::containing_address(c3::get_phys_addr());
+        auto backup = memory::Frame::containing_address(cr3::get_phys_addr());
         // map the temporary page on the current physical address of the active page table
         auto temp_p4 = temporary_page.map_table_frame(backup, *this);
 
         // point the recursive index to the inactive page table
         p4_table->get_entries()[RECURSIVE_INDEX].set(table.p4_frame.start_address(), Entry::PRESENT | Entry::WRITABLE);
-        c3::flush();
+        cr3::flush();
 
         // execute lambda in this context
         f(*this);
 
         // restore the recursive index to the old state
         temp_p4->get_entries()[RECURSIVE_INDEX].set(backup.start_address(), Entry::PRESENT | Entry::WRITABLE);
+        cr3::flush();
+
+        // unmap the temporary page mapping we created for backup table access
+        temporary_page.unmap(*this);
     }
 
 

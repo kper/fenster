@@ -11,7 +11,7 @@
  * CR3 (Control Register 3) management
  * CR3 holds the physical address of the P4 (PML4) page table
  */
-namespace c3 {
+namespace cr3 {
     /**
      * Get the current P4 table from CR3
      * With recursive page tables, P4 is always accessible at the recursive address
