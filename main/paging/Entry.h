@@ -7,6 +7,9 @@
 
 #include <stdint.h>
 
+#include "memory/frame.h"
+#include "runtime/optional.h"
+
 using PhysicalAddress = uint64_t;
 
 class VgaOutStream;
@@ -60,6 +63,13 @@ public:
     // Physical address (bits 12-51)
     PhysicalAddress get_address() const {
         return entry & 0x000FFFFFFFFFF000ULL;
+    }
+
+    rnt::Optional<memory::Frame> get_frame() const {
+        if (is_present()) {
+            return memory::Frame::containing_address(get_address());
+        }
+        return rnt::Optional<memory::Frame>();
     }
 
     void set_address(PhysicalAddress addr) {

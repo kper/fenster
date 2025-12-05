@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include "frame.h"
+#include "runtime/optional.h"
 
 // Forward declarations
 struct MemoryArea;
@@ -56,7 +57,7 @@ public:
 
     bool has_next() const;
 
-    memory::Frame next();
+    rnt::Optional<memory::Frame> next();
 };
 
 #endif //MAIN_AREA_FRAME_ITERATOR_H

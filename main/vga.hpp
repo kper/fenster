@@ -1,4 +1,12 @@
+#ifndef VGA_H
+#define VGA_H
+
 #include <stdint.h>
+
+class VgaOutStream;
+namespace vga {
+    extern VgaOutStream& out;
+}
 
 enum Color
 {
@@ -30,7 +38,8 @@ struct VgaFormat
 enum class NumFormat {
     DEC,    // Decimal (default)
     HEX,    // Hexadecimal
-    BIN     // Binary
+    BIN,    // Binary
+    SIZE    // Size
 };
 
 class VgaOutStream;
@@ -47,6 +56,8 @@ public:
     int ypos = 0;
 
     const static char endl = '\n';
+
+    static VgaOutStream& instance();
 
     VgaFormat format = {WHITE, BLACK};
     NumFormat num_format = NumFormat::DEC;
@@ -67,7 +78,10 @@ public:
 private:
     static const int width = 80;
     static const int height = 25;
+    static VgaOutStream instance_;
     volatile char *vgaBuffer = (volatile char *)0xB8000;
+
+    VgaOutStream() {}
 
     void newline();
     void scroll();
@@ -75,6 +89,7 @@ private:
 
     void print_hex(uint64_t value);
     void print_bin(uint64_t value);
+    void print_size(uint64_t bytes);
 };
 
 // Manipulator functions
@@ -92,3 +107,10 @@ inline VgaOutStream& bin(VgaOutStream& stream) {
     stream.num_format = NumFormat::BIN;
     return stream;
 };
+
+inline VgaOutStream& size(VgaOutStream& stream) {
+    stream.num_format = NumFormat::SIZE;
+    return stream;
+}
+
+#endif // VGA_H

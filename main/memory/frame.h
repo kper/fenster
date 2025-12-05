@@ -7,10 +7,11 @@
 
 #include <stdint.h>
 
+#include "memory.h"
+
 using PhysicalAddress = uint64_t;
 
 namespace memory {
-    constexpr uint64_t PAGE_SIZE = 4096;
 
 /**
  * Represents a physical memory frame (4KB page)

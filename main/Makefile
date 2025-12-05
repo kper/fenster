@@ -22,7 +22,7 @@ CXX := zig c++
 AS  := zig cc
 endif
 
-DEBUG    := # can be set to -g for debug symbols
+DEBUG    := -g # can be set to -g for debug symbols
 CFLAGS   := -target $(TARGET_ARCH) -ffreestanding -nostdlib -fno-sanitize=all -mgeneral-regs-only -Wall -Wextra -Wno-unused-parameter
 # Preprocessor flags (include current dir); extend as needed
 CPPFLAGS := -I .
@@ -45,7 +45,7 @@ SOURCES_CPP := \
     paging/paging.cpp \
     memory/AreaFrameIterator.cpp \
     memory/frame_allocator.cpp \
-    runtime.cpp \
+    runtime/runtime.cpp \
     panic.cpp \
     main.cpp
 

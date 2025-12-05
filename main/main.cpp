@@ -9,8 +9,8 @@
 #include "bootinfo.hpp"
 #include "paging/c3.h"
 #include "memory/frame_allocator.h"
+#include "paging/paging.h"
 
-VgaOutStream vga = VgaOutStream();
 static GDT gdt = GDT();
 static IDT idt = IDT();
 static ChainedPICs pics = ChainedPICs();
@@ -19,56 +19,56 @@ static ChainedPICs pics = ChainedPICs();
 
 void print_stack_frame(InterruptStackFrame *frame) {
     
-    VgaFormat orig = vga.format;
+    VgaFormat orig = vga::out.format;
 
-    vga << YELLOW;
-    vga << "ExceptionStackFrame {" << vga.endl;
+    vga::out << YELLOW;
+    vga::out << "ExceptionStackFrame {" << vga::out.endl;
 
-    vga << "  " << "instruction_pointer: " << frame->rip << vga.endl;
-    vga << "  " << "code_segment: " << frame->cs << vga.endl;
-    vga << "  " << "cpu_flags: " << frame->rflags << vga.endl;
-    vga << "  " << "stack_pointer: " << frame->rsp << vga.endl;
-    vga << "  " << "stack_segment: " << frame->ss << vga.endl;
+    vga::out << "  " << "instruction_pointer: " << frame->rip << vga::out.endl;
+    vga::out << "  " << "code_segment: " << frame->cs << vga::out.endl;
+    vga::out << "  " << "cpu_flags: " << frame->rflags << vga::out.endl;
+    vga::out << "  " << "stack_pointer: " << frame->rsp << vga::out.endl;
+    vga::out << "  " << "stack_segment: " << frame->ss << vga::out.endl;
 
-    vga << "}" << vga.endl;
-    vga << orig;
+    vga::out << "}" << vga::out.endl;
+    vga::out << orig;
 }
 
 __attribute__((interrupt)) void de_handler(InterruptStackFrame *frame)
 {
-    VgaFormat before = vga.format;
-    vga << YELLOW << "Exception: Division by zero" << before << vga.endl;
+    VgaFormat before = vga::out.format;
+    vga::out << YELLOW << "Exception: Division by zero" << before << vga::out.endl;
     print_stack_frame(frame);
     asm volatile("hlt");
 }
 
 __attribute__((interrupt)) void ud_handler(InterruptStackFrame *frame)
 {
-    VgaFormat before = vga.format;
-    vga << YELLOW << "Exception: Invalid opcode" << before << vga.endl;
+    VgaFormat before = vga::out.format;
+    vga::out << YELLOW << "Exception: Invalid opcode" << before << vga::out.endl;
     print_stack_frame(frame);
     asm volatile("hlt");
 }
 
 __attribute__((interrupt)) void df_handler(InterruptStackFrame *frame, uint64_t code)
 {
-    VgaFormat before = vga.format;
-    vga << YELLOW << "Exception: Double Fault" << before << vga.endl;
+    VgaFormat before = vga::out.format;
+    vga::out << YELLOW << "Exception: Double Fault" << before << vga::out.endl;
     print_stack_frame(frame);
     asm volatile("hlt");
 }
 
 __attribute__((interrupt)) void pf_handler(InterruptStackFrame *frame, uint64_t code)
 {
-    VgaFormat before = vga.format;
-    vga << YELLOW << "Exception: Page Fault (error code: " << code << ")" << before << vga.endl;
+    VgaFormat before = vga::out.format;
+    vga::out << YELLOW << "Exception: Page Fault (error code: " << code << ")" << before << vga::out.endl;
     print_stack_frame(frame);
     asm volatile("hlt");
 }
 
 __attribute__((interrupt)) void timer_handler(InterruptStackFrame *frame)
 {
-    vga << ".";
+    vga::out << ".";
 
     pics.notify_end_of_interrupt(Interrupt::TIMER);
 }
@@ -91,7 +91,7 @@ __attribute__((interrupt)) void keyboard_handler(InterruptStackFrame *frame)
         c = '.';
     }
     
-    vga << c;
+    vga::out << c;
     
     pics.notify_end_of_interrupt(Interrupt::KEYBOARD);
 }
@@ -120,42 +120,56 @@ extern "C" void kernel_main(void *mb_info_addr)
     
     interrupts_enable();
 
-    vga.clear();
-    vga << GREEN << "Kernel setup complete" << WHITE << vga.endl;
+    vga::out.clear();
+    vga::out << GREEN << "Kernel setup complete" << WHITE << vga::out.endl;
 
     BootInfo* boot_info = static_cast<BootInfo *>(mb_info_addr);
 
     // Print kernel memory layout from ELF sections
-    vga << vga.endl;
-    vga << "=== Kernel Memory Layout ===" << vga.endl;
+    vga::out << vga::out.endl;
 
-    if (boot_info->has_elf_sections()) {
-        auto elf = boot_info->get_elf_sections();
-        uint64_t kernel_start = UINT64_MAX;
-        uint64_t kernel_end = 0;
 
-        for (auto section = elf->sections_begin(); section != elf->sections_end(); ++section) {
-            if (section->size == 0) continue;
-            if (section->addr < kernel_start) kernel_start = section->addr;
-            if (section->addr + section->size > kernel_end) kernel_end = section->addr + section->size;
+    boot_info->print(vga::out);
+
+    vga::out << vga::out.endl;
+
+    vga::out << vga::out.endl;
+    auto page_table = paging::ActivePageTable::instance();
+    vga::out << "=== Page Table (Recursive) ===" << vga::out.endl;
+    page_table.print(vga::out, 1);
+
+    using vga::out;
+
+    auto allocator = memory::AreaFrameAllocator::from_boot_info(*boot_info);
+
+
+
+}
+
+void allocation_test(memory::FrameAllocator &allocator) {
+    using vga::out;
+    out << "Allocating all available frames..." << out.endl;
+
+    uint64_t count = 0;
+    memory::Frame last_frame;
+
+    while (true) {
+        auto frame = allocator.allocate_frame();
+        if (frame.is_empty()) {
+            // Out of memory (frame 0 with number==0 after allocating others means OOM)
+            break;
         }
 
-        vga << "Kernel start:    0x" << kernel_start << vga.endl;
-        vga << "Kernel end:      0x" << kernel_end << vga.endl;
-        vga << "Kernel size:     " << (kernel_end - kernel_start) / 1024 << " KB" << vga.endl;
+        last_frame = frame.value();
+        count++;
+
+        // Print progress every 1024 frames to avoid too much output
+        if (count % 1024 == 0) {
+            out << "  Allocated " << count << " frames..." << out.endl;
+        }
     }
 
-    vga << "Multiboot info:  0x" << (uint64_t)mb_info_addr << vga.endl;
-
-    AreaFrameAllocator(boot_info->get_memory_map(), 0, 0, 0, 0);
-
-    boot_info->print(vga);
-
-    vga << vga.endl;
-
-    vga << vga.endl;
-    vga << "=== P4 Page Table (Recursive) ===" << vga.endl;
-    paging::P4Table* p4 = c3::get_virt_p4_table();
-    vga << "P4 table address: " << hex << (uint64_t) p4 << vga.endl;
-    p4->print(vga, 1);
+    out << "Total frames allocated: " << count << out.endl;
+    out << "Last frame: #" << last_frame.number << " (" << hex << last_frame.start_address() << ")" << out.endl;
+    out << "Total memory allocated: " << size << count * memory::PAGE_SIZE << out.endl;
 }

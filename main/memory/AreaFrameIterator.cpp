@@ -5,6 +5,7 @@
 #include "AreaFrameIterator.h"
 #include "bootinfo.hpp"
 #include "frame.h"
+#include "runtime/optional.h"
 
 AreaFrameIterator::AreaFrameIterator(
     const MemoryArea* area,
@@ -49,9 +50,9 @@ bool AreaFrameIterator::has_next() const {
     return current_frame < end_frame;
 }
 
-memory::Frame AreaFrameIterator::next() {
+rnt::Optional<memory::Frame> AreaFrameIterator::next() {
     if (!has_next()) {
-        return memory::Frame(0);  // Invalid frame
+        return rnt::Optional<memory::Frame>();
     }
 
     memory::Frame frame(current_frame);

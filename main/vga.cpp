@@ -1,6 +1,18 @@
 #include "vga.hpp"
 #include "ioutils.hpp"
 
+// the global instance of the output stream
+VgaOutStream VgaOutStream::instance_;
+VgaOutStream& VgaOutStream::instance() {
+    return instance_;
+}
+
+namespace vga {
+    VgaOutStream &out = VgaOutStream::instance();
+}
+
+
+
 VgaOutStream &VgaOutStream::operator<<(const char c)
 {
     if (xpos >= width)
@@ -41,6 +53,11 @@ VgaOutStream &VgaOutStream::operator<<(const char *txt)
 
 VgaOutStream &VgaOutStream::operator<<(int i)
 {
+    if (i == 0) {
+        *this << '0';
+        return *this;
+    }
+
     if (i < 0)
     {
         *this << '-';
@@ -100,6 +117,10 @@ VgaOutStream &VgaOutStream::operator<<(uint64_t i)
         case NumFormat::BIN:
             print_bin(i);
             num_format = NumFormat::DEC;  // Reset to decimal after use
+            return *this;
+        case NumFormat::SIZE:
+            print_size(i);
+            num_format = NumFormat::DEC;
             return *this;
         case NumFormat::DEC:
         default:
@@ -240,5 +261,19 @@ void VgaOutStream::print_bin(uint64_t value)
     // Print binary digits
     for (int i = start_bit; i >= 0; i--) {
         *this << (char)('0' + ((value >> i) & 1));
+    }
+}
+
+void VgaOutStream::print_size(uint64_t bytes) {
+    uint64_t kb = bytes / 1024;
+    uint64_t mb = kb / 1024;
+    uint64_t gb = mb / 1024;
+
+    if (gb >= 1) {
+        *this << dec << gb << " GB";
+    } else if (mb >= 1) {
+        *this << dec << mb << " MB";
+    } else {
+        *this << dec << kb << " KB";
     }
 }

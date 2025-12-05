@@ -31,6 +31,23 @@ void Table<Level>::print(VgaOutStream& stream, int recursive_level, int indent) 
         print_indent(stream, indent);
         stream << level_name(Level) << "[" << (uint32_t)i << "]: ";
         entry.print(stream);
+
+        // Check if this is the recursive entry (P4[511] -> P4)
+        if constexpr (Level == 4) {
+            if (i == RECURSIVE_INDEX) {
+                stream << " ->P4 (recursive)";
+                stream << VgaOutStream::endl;
+                continue;
+            }
+        }
+
+        if (entry.is_huge()) {
+            stream << " ->HUGE-FRAME";
+        } else if constexpr (Level > 1 ) {
+            stream << " ->" << level_name(Level-1);
+        } else if constexpr (Level == 1) {
+            stream << " ->FRAME";
+        }
         stream << VgaOutStream::endl;
 
         // Recursively print next level if requested (only for P4, P3, P2)

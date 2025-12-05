@@ -8,6 +8,9 @@
 #include "Entry.h"
 #include <stddef.h>
 
+#include "panic.h"
+#include "memory/frame_allocator.h"
+
 using VirtualAddress = uint64_t;
 
 class VgaOutStream;
@@ -118,21 +121,23 @@ public:
     }
 
     // Get or create next level table - allocates a frame if entry is not present
-    template<int L = Level, typename Allocator>
+    template<int L = Level>
     typename enable_if<(L > 1), Table<L - 1>*>::type
-    next_table_create(size_t index, Allocator& allocator) {
+    next_table_create(size_t index, memory::FrameAllocator& allocator) {
         if (entries[index].is_present()) {
-            return get_next_table<L - 1>(index);
+            ASSERT(!entries[index].is_huge(), "Mapping code does not yet support huge pages.");
+            return get_next_table<L>(index);
         }
 
         // Allocate a new frame for the table
         auto frame = allocator.allocate_frame();
-        if (frame.number == 0) {
-            return nullptr;  // Out of memory
+        if (frame.is_empty()) {
+            return nullptr;
         }
 
+        auto f = frame.value();
         // Set the entry to point to the new table with default flags
-        entries[index].set(frame.start_address(), Entry::PRESENT | Entry::WRITABLE);
+        entries[index].set(f.start_address(), Entry::PRESENT | Entry::WRITABLE);
 
         // Get the newly created table and zero it
         auto table = reinterpret_cast<Table<L - 1>*>(next_table_address(index));
