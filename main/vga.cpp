@@ -1,4 +1,17 @@
 #include "vga.hpp"
+#include "ioutils.hpp"
+
+// the global instance of the output stream
+VgaOutStream VgaOutStream::instance_;
+VgaOutStream& VgaOutStream::instance() {
+    return instance_;
+}
+
+namespace vga {
+    VgaOutStream &out = VgaOutStream::instance();
+}
+
+
 
 VgaOutStream &VgaOutStream::operator<<(const char c)
 {
@@ -40,6 +53,11 @@ VgaOutStream &VgaOutStream::operator<<(const char *txt)
 
 VgaOutStream &VgaOutStream::operator<<(int i)
 {
+    if (i == 0) {
+        *this << '0';
+        return *this;
+    }
+
     if (i < 0)
     {
         *this << '-';
@@ -64,8 +82,51 @@ VgaOutStream &VgaOutStream::operator<<(int i)
     return *this;
 }
 
+VgaOutStream &VgaOutStream::operator<<(uint32_t i)
+{
+    if (i == 0) {
+        *this << '0';
+        return *this;
+    }
+
+    uint32_t d = 1;
+    uint32_t t = i;
+    while (t != 0)
+    {
+        t /= 10;
+        d *= 10;
+    }
+
+    while (d > 1)
+    {
+        uint32_t digit = (i * 10 / d) % 10;
+        *this << static_cast<char>('0' + digit);
+        d /= 10;
+    }
+
+    return *this;
+}
+
 VgaOutStream &VgaOutStream::operator<<(uint64_t i)
 {
+    switch (num_format) {
+        case NumFormat::HEX:
+            print_hex(i);
+            num_format = NumFormat::DEC;  // Reset to decimal after use
+            return *this;
+        case NumFormat::BIN:
+            print_bin(i);
+            num_format = NumFormat::DEC;  // Reset to decimal after use
+            return *this;
+        case NumFormat::SIZE:
+            print_size(i);
+            num_format = NumFormat::DEC;
+            return *this;
+        case NumFormat::DEC:
+        default:
+            break;
+    }
+
     if (i == 0) {
         *this << '0';
         return *this;
@@ -114,12 +175,22 @@ void VgaOutStream::newline()
 
 void VgaOutStream::scroll()
 {
-    for (int y = 1; y <= height; y++)
+    // Shift rows 1..height-1 up to 0..height-2
+    for (int y = 1; y < height; ++y)
     {
-        for (int x = 0; x < width * 2; x++)
+        for (int x = 0; x < width * 2; ++x)
         {
             vgaBuffer[(y - 1) * (width * 2) + x] = vgaBuffer[y * (width * 2) + x];
         }
+    }
+
+    // Clear last row (row height-1) with spaces and current attribute
+    const int row_start = (height - 1) * (width * 2);
+    for (int x = 0; x < width; ++x)
+    {
+        vgaBuffer[row_start + x * 2]     = ' ';
+        int attr = (format.background << 4) | (format.foreground & 0x0F);
+        vgaBuffer[row_start + x * 2 + 1] = attr;
     }
 }
 
@@ -143,4 +214,76 @@ void VgaOutStream::setCursor(int row, int col)
 
     outb(0x3D4, 0x0E);
     outb(0x3D5, (pos >> 8) & 0xFF);
+}
+
+VgaOutStream &VgaOutStream::operator<<(VgaOutStream& (*manip)(VgaOutStream&))
+{
+    return manip(*this);
+}
+
+void VgaOutStream::print_hex(uint64_t value)
+{
+    *this << "0x";
+
+    if (value == 0) {
+        *this << '0';
+        return;
+    }
+
+    // Find first non-zero nibble
+    int start_nibble = -1;
+    for (int i = 15; i >= 0; i--) {
+        if ((value >> (i * 4)) & 0xF) {
+            start_nibble = i;
+            break;
+        }
+    }
+
+    // Print hex digits
+    for (int i = start_nibble; i >= 0; i--) {
+        uint8_t nibble = (value >> (i * 4)) & 0xF;
+        if (nibble < 10) {
+            *this << static_cast<char>('0' + nibble);
+        } else {
+            *this << static_cast<char>('a' + (nibble - 10));
+        }
+    }
+}
+
+void VgaOutStream::print_bin(uint64_t value)
+{
+    *this << "0b";
+
+    if (value == 0) {
+        *this << '0';
+        return;
+    }
+
+    // Find first non-zero bit
+    int start_bit = -1;
+    for (int i = 63; i >= 0; i--) {
+        if ((value >> i) & 1) {
+            start_bit = i;
+            break;
+        }
+    }
+
+    // Print binary digits
+    for (int i = start_bit; i >= 0; i--) {
+        *this << (char)('0' + ((value >> i) & 1));
+    }
+}
+
+void VgaOutStream::print_size(uint64_t bytes) {
+    uint64_t kb = bytes / 1024;
+    uint64_t mb = kb / 1024;
+    uint64_t gb = mb / 1024;
+
+    if (gb >= 1) {
+        *this << dec << gb << " GB";
+    } else if (mb >= 1) {
+        *this << dec << mb << " MB";
+    } else {
+        *this << dec << kb << " KB";
+    }
 }

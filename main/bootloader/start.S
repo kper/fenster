@@ -23,6 +23,7 @@ long_mode_start:
     mov     %rax, %cr4
 
     # Run main()
+    movl %ebx, %edi      # ebx holds the grub provided multiboot_information_address. We pass it to the main function.
     call kernel_main
     
     # Never return

@@ -17,6 +17,8 @@ SECTIONS
 
     .rodata : ALIGN(4K) {
         *(.rodata*)
+        *(.eh_frame*)
+        *(.eh_frame_hdr*)
     }
 
     .data : ALIGN(4K) {
@@ -25,7 +27,7 @@ SECTIONS
 
     .bss : ALIGN(4K) {
         *(.bss*)
-        *(COMMON)
+        *(COMMON*)
     }
 
     /* Page tables: 4 KiB each, initially identity-mapped to 2 MiB huge pages */
@@ -50,5 +52,20 @@ SECTIONS
 
         _stack_top = .;
     }
+
+    .debug_abbrev : ALIGN(4K) { *(.debug_abbrev*) }
+    .debug_loc : ALIGN(4K) { *(.debug_loc*) }
+    .debug_info : ALIGN(4K) { *(.debug_info*) }
+    .debug_str : ALIGN(4K) { *(.debug_str*) }
+    .comment : ALIGN(4K) { *(.comment*) }
+    .debug_line : ALIGN(4K) { *(.debug_line*) }
+    .debug_ranges : ALIGN(4K) { *(.debug_ranges*) }
+    .debug_aranges : ALIGN(4K) { *(.debug_aranges*) }
+
+
+    .symtab (NOLOAD) : ALIGN(4K) { *(.symtab*) }
+    .strtab : ALIGN(4K) { *(.strtab*) }
+    .shstrtab : ALIGN(4K) { *(.shstrtab*) }
+
 }
 

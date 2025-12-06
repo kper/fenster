@@ -3,9 +3,12 @@
     .code32
 
 _start:
-    
+
     # Init stack pointer
     movl $_stack_top, %esp
+
+    # Preserve ebx (contains GRUB multiboot info pointer)
+    pushl %ebx
 
     # Some startup checks to determine if 64-bit mode is supported
     call check_multiboot
@@ -15,6 +18,9 @@ _start:
     # Set-up and enable paging
     call set_up_page_tables
     call enable_paging
+
+    # Restore ebx before entering long mode
+    popl %ebx
 
     # Enter 64-bit mode
     lgdt gdt64_pointer                  # Load 64-bit GDT
@@ -94,6 +100,10 @@ check_long_mode:
 
 
 set_up_page_tables:
+    # recursive map P4 last entry to P4
+    movl    $p4_table, %eax
+    orl     $0b11, %eax             # present + writable
+    movl    %eax, p4_table + 511*8
     
     # map first P4 entry to P3 table
     movl $p3_table, %eax
