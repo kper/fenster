@@ -11,6 +11,7 @@
 namespace memory {
 
     extern Allocator* kernel_heap;
+    extern FrameAllocator* frame_allocator;
 
     void init(BootInfo& boot_info);
 }
