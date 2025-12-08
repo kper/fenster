@@ -5,10 +5,14 @@
 #ifndef MAIN_MEMORY_H
 #define MAIN_MEMORY_H
 
-#include <stdint.h>
+#include "bootinfo.hpp"
+#include "virtual/BumpAllocator.h"
 
 namespace memory {
-    constexpr uint64_t PAGE_SIZE = 4096;
+
+    extern Allocator* kernel_heap;
+
+    void init(BootInfo& boot_info);
 }
 
 #endif //MAIN_MEMORY_H

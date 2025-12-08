@@ -6,8 +6,7 @@
 #define MAIN_FRAME_H_INCLUDE
 
 #include <stdint.h>
-
-#include "memory.h"
+#include "constants.h"
 
 using PhysicalAddress = uint64_t;
 

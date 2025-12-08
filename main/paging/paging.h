@@ -6,11 +6,8 @@
 #define MAIN_PAGE_H
 #include <stdint.h>
 
-#include "cr3.h"
 #include "Entry.h"
 #include "Table.h"
-#include "Entry.h"
-#include "paging.h"
 #include "vga.hpp"
 #include "memory/frame.h"
 #include "memory/frame_allocator.h"

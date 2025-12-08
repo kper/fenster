@@ -5,11 +5,9 @@
 #ifndef MAIN_FRAME_H
 #define MAIN_FRAME_H
 
-#include <stdint.h>
 #include "AreaFrameIterator.h"
 #include "bootinfo.hpp"
-#include "memory.h"
-#include "../runtime/optional.h"
+#include "runtime/optional.h"
 
 // Forward declarations
 struct Multiboot2TagMmap;
