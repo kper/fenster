@@ -6,8 +6,66 @@
 #include "AreaFrameIterator.h"
 #include "vga.hpp"
 #include "../bootinfo.hpp"
+#include "virtual/VirtualAllocator.h"
 
 namespace memory {
+
+    extern Allocator* kernel_heap;
+
+    void FreeList::init(Frame *backing_buffer, size_t capacity) {
+        data_ = backing_buffer;
+        capacity_ = capacity;
+        size_ = 0;
+        heap_owner_ = nullptr;
+        uses_heap_storage_ = false;
+    }
+
+    bool FreeList::try_grow(Allocator *heap) {
+        if (heap == nullptr) {
+            return false;
+        }
+
+        size_t new_capacity = capacity_ * 2;
+        size_t bytes = new_capacity * sizeof(Frame);
+        void* mem = heap->allocate(bytes, alignof(Frame));
+        if (!mem) {
+            return false;
+        }
+
+        Frame* new_data = reinterpret_cast<Frame*>(mem);
+        for (size_t i = 0; i < size_; i++) {
+            new_data[i] = data_[i];
+        }
+
+        if (uses_heap_storage_ && heap_owner_) {
+            heap_owner_->deallocate(data_, capacity_ * sizeof(Frame));
+        }
+
+        data_ = new_data;
+        capacity_ = new_capacity;
+        heap_owner_ = heap;
+        uses_heap_storage_ = true;
+        return true;
+    }
+
+    bool FreeList::push(Frame frame, Allocator *heap) {
+        if (size_ >= capacity_) {
+            if (!try_grow(heap)) {
+                return false;
+            }
+        }
+        data_[size_++] = frame;
+        return true;
+    }
+
+    rnt::Optional<Frame> FreeList::pop() {
+        if (size_ == 0) {
+            return rnt::Optional<Frame>();
+        }
+        size_--;
+        return data_[size_];
+    }
+
     AreaFrameAllocator::AreaFrameAllocator(
         const Multiboot2TagMmap* mmap,
         PhysicalAddress kernel_start,
@@ -24,6 +82,7 @@ namespace memory {
         , multiboot_start(multiboot_start)
         , multiboot_end(multiboot_end)
     {
+        free_list.init(free_list_storage, INITIAL_FREE_CAPACITY);
         // Find first available area and create iterator
         for (auto area = mmap->entries_begin(); area != mmap->entries_end(); ++area) {
             if (area->is_available()) {
@@ -97,6 +156,12 @@ namespace memory {
     }
 
     rnt::Optional<Frame> AreaFrameAllocator::allocate_frame() {
+        // Reuse a freed frame if available.
+        auto reused = free_list.pop();
+        if (reused.has_value()) {
+            return reused;
+        }
+
         // Keep trying until we find a frame or run out of areas
         while (has_valid_iterator) {
             if (current_iterator.has_next()) {
@@ -112,8 +177,7 @@ namespace memory {
     }
 
     void AreaFrameAllocator::deallocate_frame(memory::Frame frame) {
-        // TODO: Implement deallocation with bitmap
-        // For now, this is a no-op as we have a bump allocator
-        (void)frame;  // Suppress unused parameter warning
+        // Store the frame for later reuse. Grow using the heap if available.
+        ASSERT(free_list.push(frame, kernel_heap), "Frame free list exhausted");
     }
 }
