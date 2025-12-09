@@ -11,8 +11,6 @@
 #include "panic.h"
 #include "memory/frame_allocator.h"
 
-using VirtualAddress = uint64_t;
-
 class VgaOutStream;
 
 namespace paging {
@@ -154,8 +152,8 @@ private:
     // Calculate next level table address using recursive page table mapping
     // Shift current address left by 9 bits (drops highest index, adds space for new index)
     // OR with index << 12 (adds the new index in the page offset position)
-    VirtualAddress next_table_address(size_t index) const {
-        VirtualAddress table_address = reinterpret_cast<uint64_t>(this);
+    uint64_t next_table_address(size_t index) const {
+        uint64_t table_address = reinterpret_cast<uint64_t>(this);
         return (table_address << 9) | (index << 12);
     }
 

@@ -5,17 +5,40 @@
 #ifndef MAIN_FRAME_H
 #define MAIN_FRAME_H
 
-#include <stdint.h>
 #include "AreaFrameIterator.h"
 #include "bootinfo.hpp"
-#include "memory.h"
-#include "../runtime/optional.h"
+#include "runtime/optional.h"
+#include <stddef.h>
 
 // Forward declarations
 struct Multiboot2TagMmap;
 struct MemoryArea;
 
 namespace memory {
+
+    class Allocator;
+
+    /**
+     * Simple LIFO free list for frames.
+     * Backed by a small static buffer and can grow using the kernel heap once available.
+     */
+    class FreeList {
+    public:
+        void init(Frame* backing_buffer, size_t capacity);
+        bool push(Frame frame, Allocator* heap);
+        rnt::Optional<Frame> pop();
+        bool empty() const { return size_ == 0; }
+
+    private:
+        Frame*   data_ = nullptr;
+        size_t   capacity_ = 0;
+        size_t   size_ = 0;
+        Allocator* heap_owner_ = nullptr;
+        bool     uses_heap_storage_ = false;
+
+        bool try_grow(Allocator* heap);
+    };
+
     /**
      * Abstract interface for frame allocators
      * All frame allocators must implement this interface
@@ -40,6 +63,9 @@ namespace memory {
         PhysicalAddress kernel_end;
         PhysicalAddress multiboot_start;
         PhysicalAddress multiboot_end;
+        static constexpr size_t INITIAL_FREE_CAPACITY = 128;
+        FreeList free_list;
+        Frame free_list_storage[INITIAL_FREE_CAPACITY];
 
         /**
          * Find next available area and update current iterator

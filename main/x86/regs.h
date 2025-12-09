@@ -5,7 +5,6 @@
 #ifndef MAIN_REGS_H
 #define MAIN_REGS_H
 #include <stdint.h>
-#include "paging/paging.h"
 
 namespace msr {
     // Model-Specific Register addresses
@@ -76,7 +75,7 @@ namespace cr0 {
 
 namespace cr2 {
     // Returns the Page Fault Linear Address
-    VirtualAddress get_pfla() {
+    inline uint64_t get_pfla() {
         uint64_t cr2_value;
         asm volatile("mov %%cr2, %0" : "=r"(cr2_value));
         return cr2_value;

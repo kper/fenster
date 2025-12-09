@@ -7,8 +7,7 @@
 #include "pic.hpp"
 #include "idt.hpp"
 #include "bootinfo.hpp"
-#include "paging/cr3.h"
-#include "memory/frame_allocator.h"
+#include "memory/memory.h"
 #include "paging/paging.h"
 #include "x86/regs.h"
 
@@ -121,10 +120,6 @@ extern "C" void kernel_main(void *mb_info_addr)
     
     interrupts_enable();
 
-    // enable NO-EXECUTE bit for pages
-    efer::enable_nxe_bit();
-    // enable WRITE project bit for pages
-    cr0::enable_write_protect();
 
     vga::out.clear();
     vga::out << GREEN << "Kernel setup complete" << WHITE << vga::out.endl;
@@ -137,19 +132,10 @@ extern "C" void kernel_main(void *mb_info_addr)
 
     boot_info->print(vga::out);
 
-    vga::out << vga::out.endl;
-
-    vga::out << vga::out.endl;
-    auto page_table = paging::ActivePageTable::instance();
-    vga::out << "=== Page Table (Recursive) ===" << vga::out.endl;
-    page_table.print(vga::out, 1);
-
     using vga::out;
+    vga::out << vga::out.endl;
 
-    auto allocator = memory::AreaFrameAllocator::from_boot_info(*boot_info);
-    paging::remap_the_kernel(allocator, *boot_info);
-
-    page_table.print(out, -1);
+    memory::init(*boot_info);
 
     // allocator.allocate_frame();
     out << "We are still alive!" << out.endl;
