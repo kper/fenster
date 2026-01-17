@@ -51,7 +51,8 @@ constexpr uint8_t PIC_2_OFFSET = PIC_1_OFFSET + 8;
 
 enum Interrupt {
     TIMER = PIC_1_OFFSET,
-    KEYBOARD
+    KEYBOARD = 33,
+    SYSCALL = 0x80,
 };
 
 // Interrupt utilities

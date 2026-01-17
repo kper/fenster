@@ -51,6 +51,7 @@ SOURCES_CPP := \
     memory/virtual/BlockAllocator.cpp \
     runtime/runtime.cpp \
     panic.cpp \
+    syscall.cpp \
     main.cpp
 
 SOURCES_ASM := \

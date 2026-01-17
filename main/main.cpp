@@ -7,6 +7,7 @@
 #include "pic.hpp"
 #include "idt.hpp"
 #include "bootinfo.hpp"
+#include "syscall.h"
 #include "memory/memory.h"
 #include "paging/paging.h"
 #include "x86/regs.h"
@@ -76,13 +77,13 @@ __attribute__((interrupt)) void timer_handler(InterruptStackFrame *frame)
 __attribute__((interrupt)) void keyboard_handler(InterruptStackFrame *frame)
 {
     uint8_t scancode = inb(0x60);
-    
+
     if ((scancode & 0x80) != 0) {
         // Do nothing on key release
         pics.notify_end_of_interrupt(Interrupt::KEYBOARD);
         return;
     }
-    
+
     char c = 0;
     // Keyboard scan code to character mapping array
     // Non-printable characters are represented as 0
@@ -182,8 +183,87 @@ __attribute__((interrupt)) void keyboard_handler(InterruptStackFrame *frame)
     }
 
     vga::out << c;
-    
+
     pics.notify_end_of_interrupt(Interrupt::KEYBOARD);
+}
+
+// The actual syscall handler implementation
+extern "C" void syscall_handler_inner(uint64_t syscall_number, uint64_t syscall_arg)
+{
+    VgaFormat before = vga::out.format;
+    //vga::out << CYAN << "[SYSCALL ] num: " << syscall_number << " arg: " << syscall_arg << before << vga::out.endl;
+    switch (syscall_number) {
+        case Syscall::NOOP: {
+            vga::out << CYAN << "[SYSCALL NOOP] Test triggered!" << before << vga::out.endl;
+            break;
+        }
+        case Syscall::WRITE_CHAR: {
+            vga::out << static_cast<char>(syscall_arg);
+            break;
+        }
+        case Syscall::READ_CHAR: {
+            vga::out << CYAN << "[SYSCALL READ_CHAR] TODO" << before << vga::out.endl;
+            break;
+        }
+        case Syscall::EXIT: {
+            vga::out << CYAN << "[SYSCALL EXIT] TODO" << before << vga::out.endl;
+            break;
+        }
+        default: {
+            vga::out << CYAN << "[SYSCALL UNKNOWN] System " << syscall_number << before << vga::out.endl;
+            break;
+        }
+    }
+}
+
+// Assembly wrapper that preserves syscall arguments from registers
+// https://wiki.osdev.org/System_Calls#Interrupts
+__attribute__((naked)) void syscall_handler()
+{
+    asm volatile(
+        // Save registers - at entry, rax=syscall_number, rdi=syscall_arg
+        "push %%rax\n"           // Save syscall number
+        "push %%rbx\n"
+        "push %%rcx\n"
+        "push %%rdx\n"
+        "push %%rsi\n"
+        "push %%rdi\n"           // Save syscall arg
+        "push %%rbp\n"
+        "push %%r8\n"
+        "push %%r9\n"
+        "push %%r10\n"
+        "push %%r11\n"
+        "push %%r12\n"
+        "push %%r13\n"
+        "push %%r14\n"
+        "push %%r15\n"
+
+        // Load arguments for C calling convention
+        // rdi = first arg (syscall_number), rsi = second arg (syscall_arg)
+        "mov 14*8(%%rsp), %%rdi\n"   // Load saved rax (syscall_number)
+        "mov 9*8(%%rsp), %%rsi\n"    // Load saved rdi (syscall_arg)
+
+        "call syscall_handler_inner\n"
+
+        // Restore all registers
+        "pop %%r15\n"
+        "pop %%r14\n"
+        "pop %%r13\n"
+        "pop %%r12\n"
+        "pop %%r11\n"
+        "pop %%r10\n"
+        "pop %%r9\n"
+        "pop %%r8\n"
+        "pop %%rbp\n"
+        "pop %%rdi\n"
+        "pop %%rsi\n"
+        "pop %%rdx\n"
+        "pop %%rcx\n"
+        "pop %%rbx\n"
+        "pop %%rax\n"
+        "iretq\n"
+        ::: "memory"
+    );
 }
 
 extern "C" void kernel_main(void *mb_info_addr)
@@ -204,6 +284,9 @@ extern "C" void kernel_main(void *mb_info_addr)
     pics.init(PIC_1_OFFSET, PIC_2_OFFSET);
     idt.set_idt_entry(Interrupt::TIMER, timer_handler);
     idt.set_idt_entry(Interrupt::KEYBOARD, keyboard_handler);
+
+    // Register syscall handler at vector 0x80
+    idt.set_idt_entry(Interrupt::SYSCALL, reinterpret_cast<void(*)(InterruptStackFrame*)>(syscall_handler));
 
     // Disable the timer for now
     pics.disable(Interrupt::TIMER);
@@ -228,6 +311,15 @@ extern "C" void kernel_main(void *mb_info_addr)
     memory::init(*boot_info);
 
     // allocator.allocate_frame();
+
+    // Test syscall from kernel space
+    out << "Testing syscall mechanism..." << out.endl;
+    write_char('O');
+    write_char('K');
+    write_char('\n');
+
+    out << "Syscall test complete!" << out.endl;
+
     out << "We are still alive!" << out.endl;
 }
 
