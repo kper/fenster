@@ -11,6 +11,7 @@
 #include "memory/memory.h"
 #include "paging/paging.h"
 #include "x86/regs.h"
+#include "usermode.h"
 
 static GDT gdt = GDT();
 static IDT idt = IDT();
@@ -191,7 +192,7 @@ __attribute__((interrupt)) void keyboard_handler(InterruptStackFrame *frame)
 extern "C" void syscall_handler_inner(uint64_t syscall_number, uint64_t syscall_arg)
 {
     VgaFormat before = vga::out.format;
-    //vga::out << CYAN << "[SYSCALL ] num: " << syscall_number << " arg: " << syscall_arg << before << vga::out.endl;
+    vga::out << CYAN << "[SYSCALL ] num: " << syscall_number << " arg: " << syscall_arg << before << vga::out.endl;
     switch (syscall_number) {
         case Syscall::NOOP: {
             vga::out << CYAN << "[SYSCALL NOOP] Test triggered!" << before << vga::out.endl;
@@ -319,6 +320,11 @@ extern "C" void kernel_main(void *mb_info_addr)
     write_char('\n');
 
     out << "Syscall test complete!" << out.endl;
+
+    // Jump to ring 3 usermode
+    //extern void user_function();
+    out << "Jumping to ring 3..." << out.endl;
+    gdt.jump_to_ring3(user_function);
 
     out << "We are still alive!" << out.endl;
 }

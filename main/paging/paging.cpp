@@ -128,6 +128,10 @@ namespace paging {
             flags.no_execute = true;
         }
 
+        // Make kernel code user-accessible for ring 3 execution
+        // TODO: For production, user code should be in separate pages
+        flags.user_accessible = true;
+
         return flags;
     }
 

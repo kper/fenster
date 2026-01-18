@@ -135,7 +135,8 @@ public:
 
         auto f = frame.value();
         // Set the entry to point to the new table with default flags
-        entries[index].set(f.start_address(), Entry::PRESENT | Entry::WRITABLE);
+        // USER bit is required for ring 3 to traverse page table hierarchy
+        entries[index].set(f.start_address(), Entry::PRESENT | Entry::WRITABLE | Entry::USER);
 
         // Get the newly created table and zero it
         auto table = reinterpret_cast<Table<L - 1>*>(next_table_address(index));

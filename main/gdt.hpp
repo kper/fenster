@@ -38,14 +38,18 @@ constexpr uint64_t DF_SIZE = 4 * 0x1000;
 
 constexpr uint16_t CS_SELECTOR  = 0x08; // at gdt[1]
 constexpr uint16_t TSS_SELECTOR = 0x10; // at gdt[2..3]
+constexpr uint16_t USER_CODE_SELECTOR = 0x20 | 3; // at gdt[4], DPL=3
+constexpr uint16_t USER_DATA_SELECTOR = 0x28 | 3; // at gdt[5], DPL=3
 
 class GDT
 {
 public:
     void init();
+    void jump_to_ring3(void (*user_function)());
 
 private:
-    uint64_t gdt[4]; // For now we only need 3 entries: 0 | CS | TSS (2 entries wide)
+    uint64_t gdt[6]; // null | kernel CS | TSS (2 entries) | user code | user data
     TaskStateSegment tss;
     uint8_t df_stack[DF_SIZE];
+    uint8_t kernel_stack[8192]; // Stack for kernel when returning from ring 3
 };

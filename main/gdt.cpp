@@ -1,16 +1,26 @@
 #include "gdt.hpp"
 
+#include "vga.hpp"
+
 void GDT::init()
 {
     gdt[0] = 0;
 
-    // Code segment descriptor:
+    // Code segment descriptor (ring 0):
     // 41: readable
     // 43: code/data segment
     // 44: descriptor type (user vs system)
     // 47: present
     // 53: 64-bit CS
     gdt[1] = (1ull << 41) | (1ull << 43) | (1ull << 44) | (1ull << 47) | (1ull << 53);
+
+    // User code segment (ring 3):
+    // 41: readable, 43: code/data, 44: descriptor type, 45-46: DPL=3, 47: present, 53: 64-bit
+    gdt[4] = (1ull << 41) | (1ull << 43) | (1ull << 44) | (3ull << 45) | (1ull << 47) | (1ull << 53);
+
+    // User data segment (ring 3):
+    // 41: writable, 44: descriptor type, 45-46: DPL=3, 47: present
+    gdt[5] = (1ull << 41) | (1ull << 44) | (3ull << 45) | (1ull << 47);
 
     uint64_t dfs_bot = reinterpret_cast<uint64_t>(&df_stack[0]);
     uint64_t dfs_top = dfs_bot + DF_SIZE;
@@ -21,6 +31,9 @@ void GDT::init()
     tss.reserved2 = 0;
     tss.reserved3 = 0;
     tss.io = sizeof(tss);
+
+    // Set up kernel stack for when we return from ring 3 (syscalls, interrupts)
+    tss.pst.s0 = reinterpret_cast<uint64_t>(&kernel_stack[0]) + sizeof(kernel_stack);
 
     // Assign the #DF stack at IST idx 1
     tss.ist.s0 = dfs_top;
@@ -60,4 +73,34 @@ void GDT::init()
 
     // Load the TSS
     asm volatile ("ltr %0" :: "r"((uint16_t)TSS_SELECTOR));
+}
+
+void GDT::jump_to_ring3(void (*user_function)())
+{
+    // Allocate user stack (static for simplicity)
+    static uint8_t user_stack[8192];
+    uint64_t user_stack_top = reinterpret_cast<uint64_t>(&user_stack[0]) + sizeof(user_stack);
+
+    // Get current RFLAGS and set interrupt flag
+    uint64_t rflags;
+    asm volatile("pushfq; pop %0" : "=r"(rflags));
+    rflags |= 0x200; // Set IF (interrupt enable flag)
+
+    // Jump to ring 3 using iretq
+    // Stack layout for iretq: SS, RSP, RFLAGS, CS, RIP
+    asm volatile(
+        "pushq %[ss]\n"          // Push user data segment selector
+        "pushq %[rsp]\n"         // Push user stack pointer
+        "pushq %[rflags]\n"      // Push RFLAGS
+        "pushq %[cs]\n"          // Push user code segment selector
+        "pushq %[rip]\n"         // Push instruction pointer (user function)
+        "iretq\n"                // Return to ring 3
+        :
+        : [ss] "r"((uint64_t)USER_DATA_SELECTOR),
+          [rsp] "r"(user_stack_top),
+          [rflags] "r"(rflags),
+          [cs] "r"((uint64_t)USER_CODE_SELECTOR),
+          [rip] "r"((uint64_t)user_function)
+        : "memory"
+    );
 }

@@ -26,4 +26,6 @@ void write_char(char c);
 
 char read_char();
 
+void exit(int code);
+
 #endif //MAIN_SYSCALL_H
