@@ -39,7 +39,11 @@ namespace paging {
      */
     void jump_to_higher_half(void (*continuation)()) __attribute__((noreturn));
 
-    void unmap_lower_half(memory::FrameAllocator& allocator);
+    /**
+     * Unmap the lower-half identity mapping (P4[0])
+     * Call this after jumping to high addresses and initializing everything
+     */
+    void unmap_lower_half();
 
     /**
      * Page flags for mapping operations

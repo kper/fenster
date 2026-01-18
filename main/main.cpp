@@ -266,30 +266,53 @@ __attribute__((naked)) void syscall_handler()
     );
 }
 
-// Function to setup all IDT handlers (can be called multiple times after GDT/IDT rebuilds)
-extern "C" void setup_idt_handlers() {
-    idt.set_idt_entry(0, de_handler);
-    idt.set_idt_entry(6, ud_handler);
-    idt.set_idt_entry_err(14, pf_handler);
-    idt.set_idt_entry_err(8, 1, df_handler);
-    idt.set_idt_entry(Interrupt::TIMER, timer_handler);
-    idt.set_idt_entry(Interrupt::KEYBOARD, keyboard_handler);
-    idt.set_idt_entry(Interrupt::SYSCALL, reinterpret_cast<void(*)(InterruptStackFrame*)>(syscall_handler));
-}
-
-// This function is called after memory init completes at high addresses
-extern "C" void kernel_main_continuation() __attribute__((noreturn));
-
 extern "C" void kernel_main(void *mb_info_addr)
 {
-    // Sets up GDT, TSS + IST
+    vga::out.clear();
+    vga::out << GREEN << "Kernel starting..." << WHITE << vga::out.endl;
+
+    BootInfo* boot_info = static_cast<BootInfo *>(mb_info_addr);
+
+    // Print kernel memory layout from ELF sections
+    vga::out << vga::out.endl;
+    boot_info->print(vga::out);
+    vga::out << vga::out.endl;
+
+    // Remap kernel and jump to high addresses
+    // This function does NOT return! It jumps to kernel_main_high()
+    memory::init_and_jump_high(*boot_info);
+
+    __builtin_unreachable();
+}
+
+// This function runs entirely at high addresses
+extern "C" void kernel_main_high() {
+    using vga::out;
+
+    // Now unmap the lower-half identity mapping
+    // paging::unmap_lower_half();
+
+    out << GREEN << "Now running at high addresses! Proof: " << hex << (uint64_t) &kernel_main_high << WHITE << out.endl;
+
+    memory::init_heap();
+
+    // Update VGA buffer to high address
+    out.update_buffer_address(0xb8000 + paging::KERNEL_OFFSET);
+
+    // Initialize GDT, TSS + IST (once, at high addresses)
     gdt.init();
 
     // Set up the IDT with all handlers
-    setup_idt_handlers();
+    idt.set_idt_entry(0, de_handler);
+    idt.set_idt_entry(6, ud_handler);
+    idt.set_idt_entry_err(14, pf_handler);
+    idt.set_idt_entry_err(8, 1, df_handler);  // On #DF, switch to the df-stack (at idx 1)
+    idt.set_idt_entry(Interrupt::TIMER, timer_handler);
+    idt.set_idt_entry(Interrupt::KEYBOARD, keyboard_handler);
+    idt.set_idt_entry(Interrupt::SYSCALL, reinterpret_cast<void(*)(InterruptStackFrame*)>(syscall_handler));
     idt.load();
 
-    // Init PIC
+    // Init PIC & register interrupts handlers
     pics.init(PIC_1_OFFSET, PIC_2_OFFSET);
 
     // Disable the timer for now
@@ -297,31 +320,7 @@ extern "C" void kernel_main(void *mb_info_addr)
 
     interrupts_enable();
 
-
-    vga::out.clear();
-    vga::out << GREEN << "Kernel setup complete" << WHITE << vga::out.endl;
-
-    BootInfo* boot_info = static_cast<BootInfo *>(mb_info_addr);
-
-    // Print kernel memory layout from ELF sections
-    vga::out << vga::out.endl;
-
-
-    boot_info->print(vga::out);
-
-    using vga::out;
-    vga::out << vga::out.endl;
-
-    // Note: memory::init() does not return! It jumps to high addresses
-    // and eventually calls kernel_main_continuation()
-    memory::init(*boot_info, gdt, idt);
-
-    __builtin_unreachable();
-}
-
-// Continuation of kernel_main after memory init at high addresses
-extern "C" void kernel_main_continuation() {
-    using vga::out;
+    out << GREEN << "Kernel setup complete" << WHITE << out.endl;
 
     // Test syscall from kernel space
     out << "Testing syscall mechanism..." << out.endl;

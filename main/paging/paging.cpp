@@ -77,28 +77,16 @@ namespace paging {
         // swap the active table and the new table
         active_table.swap(new_table);
 
-        out << "Kernel remapped with double mapping (low + high addresses)" << out.endl;
+        // Update VGA buffer address
+        out.update_buffer_address((uint64_t)0xb8000 + KERNEL_OFFSET);
 
-        // TODO: Unmap low identity mapping (step 5)
-        // because of swap, the new_table is now actually the old table
-        // auto old_table = new_table;
-        // we reuse the old p4_frame (which is below the stack bottom)
-        // as a guard page that is unmapped and would cause a page fault
-        // instead of silently corrupting the .bss data
-        // auto old_p4_page = Page::containing_address(old_table.p4_frame.start_address());
-        // active_table.unmap(old_p4_page, allocator);
+        out << "Kernel remapped with double mapping (low + high addresses)" << out.endl;
     }
 
     void jump_to_higher_half(void (*continuation)()) {
-        using vga::out;
-
-        out << "Jumping to higher-half kernel..." << out.endl;
-
         // Adjust the continuation function pointer to high address
         uint64_t continuation_addr = reinterpret_cast<uint64_t>(continuation);
-        out << "Continuation address (low): " << hex << continuation_addr << out.endl;
         uint64_t high_continuation = continuation_addr + KERNEL_OFFSET;
-        out << "Continuation address (high): " << hex << high_continuation << out.endl;
 
         // Assembly code to jump to high address and call continuation
         // This function does NOT return - it calls the continuation directly
@@ -117,11 +105,7 @@ namespace paging {
         __builtin_unreachable();
     }
 
-    void unmap_lower_half(memory::FrameAllocator& allocator) {
-        using vga::out;
-
-        out << "Unmapping lower-half identity mapping..." << out.endl;
-
+    void unmap_lower_half() {
         // Get the P4 table through recursive mapping
         auto p4_table = cr3::get_virt_p4_table();
 
@@ -132,7 +116,7 @@ namespace paging {
         // Flush TLB to ensure the unmapping takes effect
         cr3::flush();
 
-        out << "Lower-half unmapped. Kernel now only accessible at high addresses." << out.endl;
+        // Note: No VGA output here to avoid any potential issues with low memory access
     }
 
 

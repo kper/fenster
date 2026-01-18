@@ -182,7 +182,7 @@ namespace memory {
     }
 
     void AreaFrameAllocator::update_pointers_to_high(uint64_t offset) {
-        // Update mmap pointer to high address
+        // Update mmap pointer to high address (no VGA output to avoid touching low memory)
         if (mmap != nullptr) {
             mmap = reinterpret_cast<const Multiboot2TagMmap*>(
                 reinterpret_cast<uint64_t>(mmap) + offset
@@ -196,9 +196,7 @@ namespace memory {
             );
         }
 
-        // Note: AreaFrameIterator doesn't store pointers, only frame numbers,
-        // so it doesn't need updating
-        // Note: FreeList uses static storage initially, which is part of this object,
-        // so it will be accessible at high addresses once we're running there
+        // Note: AreaFrameIterator stores frame numbers, not pointers, so no update needed
+        // Note: FreeList data pointer will be updated separately if needed
     }
 }

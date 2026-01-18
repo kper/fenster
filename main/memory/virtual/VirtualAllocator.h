@@ -11,7 +11,7 @@
 #include "paging/paging.h"
 
 namespace memory {
-    constexpr size_t HEAP_START = 0000'001'000'000'0000;
+    constexpr size_t HEAP_START = 0000'001'000'000'0000 + paging::KERNEL_OFFSET;
     constexpr size_t HEAP_SIZE = 100 * 1024; // 100 KiB
 
     class Allocator {
