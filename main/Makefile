@@ -53,6 +53,7 @@ SOURCES_CPP := \
     runtime/runtime.cpp \
     panic.cpp \
     syscall.cpp \
+    usermode.cpp \
     main.cpp
 
 SOURCES_ASM := \

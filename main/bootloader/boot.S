@@ -102,17 +102,17 @@ check_long_mode:
 set_up_page_tables:
     # recursive map P4 last entry to P4
     movl    $p4_table, %eax
-    orl     $0b11, %eax             # present + writable
+    orl     $0b111, %eax            # present + writable + user
     movl    %eax, p4_table + 511*8
-    
+
     # map first P4 entry to P3 table
     movl $p3_table, %eax
-    orl $3, %eax         # present + writable
+    orl $7, %eax         # present + writable + user
     movl %eax, p4_table
 
     # map first P3 entry to P2 table
     movl $p2_table, %eax
-    orl $3, %eax         # present + writable
+    orl $7, %eax         # present + writable + user
     movl %eax, p3_table
 
     # map each P2 entry to a huge 2MiB page
@@ -122,7 +122,7 @@ set_up_page_tables:
     # map ecx-th P2 entry to a huge page that starts at address 2MiB*ecx
     movl $0x200000, %eax            # 2MiB
     mull %ecx                       # start address of ecx-th page
-    orl $0b10000011, %eax           # present + writable + huge
+    orl $0b10000111, %eax           # present + writable + user + huge
     movl %eax, p2_table(,%ecx,8)    # map ecx-th entry
 
     incl %ecx           # increase counter
@@ -136,7 +136,7 @@ set_up_page_tables:
     movl %eax, %edi                # save index in EDI
 
     movl $p1_table, %eax
-    orl  $0b11, %eax                # present + writable, (not huge)
+    orl  $0b111, %eax               # present + writable + user, (not huge)
     movl %eax, p2_table(,%edi,8)    # overwrite the P2 entry containing the stack
 
     # leave the first P1 entry unmapped (the guard page)
@@ -150,7 +150,7 @@ set_up_page_tables:
     movl $0x1000, %eax              # 4KiB
     mull %ecx                       # start address of ecx-th page
     addl $_stack_guard, %eax        # add the _stack_guard offset
-    orl $0b11, %eax                 # present + writable, (not huge)
+    orl $0b111, %eax                # present + writable + user, (not huge)
     movl %eax, p1_table(,%ecx,8)    # map ecx-th entry
 
     incl %ecx           # increase counter

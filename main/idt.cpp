@@ -41,6 +41,29 @@ void IDT::set_idt_entry_err(uint8_t vec, uint8_t ist_vec, void (*handler)(Interr
     set_idt_entry(vec, ist_vec, (void (*)(InterruptStackFrame *))handler);
 }
 
+void IDT::set_idt_entry_user(uint8_t vec, void (*handler)(InterruptStackFrame *))
+{
+    uint64_t addr = (uint64_t)handler;
+    IdtEntry &e = idt[vec];
+
+    e.pointer_l = addr & 0xFFFF;
+    e.pointer_m = (addr >> 16) & 0xFFFF;
+    e.pointer_h = (addr >> 32) & 0xFFFFFFFF;
+
+    e.gdt_selector = CS_SELECTOR;
+
+    // [0..2] Interrupt Stack Table Index (0 = don't use IST)
+    // [3..7] Reserved
+    // [8] 0: Interrupt Gate, 1: Trap Gate
+    // [9..11] must be one
+    // [12] must be zero
+    // [13..14] Descriptor Privilege Level (DPL) = 3 (ring 3 can call)
+    // [15]	Present
+    e.options = 0b1110111000000000;  // DPL=3 (bits 13-14 set)
+
+    e.reserved = 0;
+}
+
 void IDT::load() {
     
     // Prepare the IDT descriptor

@@ -180,8 +180,8 @@ namespace paging {
             auto table = temporary_page.map_table_frame(frame, active_table);
             // Reset garbage value at that frame
             table->clear();
-            // Make the p4 table recursive
-            table->get_entries()[RECURSIVE_INDEX].set(frame.start_address(), Entry::PRESENT | Entry::WRITABLE);
+            // Make the p4 table recursive (with USER bit for ring 3 access)
+            table->get_entries()[RECURSIVE_INDEX].set(frame.start_address(), Entry::PRESENT | Entry::WRITABLE | Entry::USER);
             // Unmap the temporary page, so it is free again. The p4_frame is still allocated by the original allocator.
             temporary_page.unmap(active_table);
         }

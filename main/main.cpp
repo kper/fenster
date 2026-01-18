@@ -12,6 +12,7 @@
 #include "memory/virtual/BlockAllocator.h"
 #include "paging/paging.h"
 #include "x86/regs.h"
+#include "usermode.h"
 
 static GDT gdt = GDT();
 static IDT idt = IDT();
@@ -58,7 +59,7 @@ __attribute__((interrupt)) void df_handler(InterruptStackFrame *frame, uint64_t 
 {
     auto& out = vga::out();
     VgaFormat before = out.format;
-    out << YELLOW << "Exception: Double Fault" << before << out.endl;
+    out << YELLOW << "Exception: Double Fault [code: "<< code << "]" << before << out.endl;
     print_stack_frame(frame);
     asm volatile("hlt");
 }
@@ -199,7 +200,7 @@ extern "C" void syscall_handler_inner(uint64_t syscall_number, uint64_t syscall_
 {
     auto& out = vga::out();
     VgaFormat before = out.format;
-    //out << CYAN << "[SYSCALL ] num: " << syscall_number << " arg: " << syscall_arg << before << out.endl;
+    // out << CYAN << "[SYSCALL ] num: " << syscall_number << " arg: " << syscall_arg << before << out.endl;
     switch (syscall_number) {
         case Syscall::NOOP: {
             out << CYAN << "[SYSCALL NOOP] Test triggered!" << before << out.endl;
@@ -319,14 +320,17 @@ extern "C" void kernel_main_high() {
     idt.set_idt_entry(0, de_handler);
     idt.set_idt_entry(6, ud_handler);
     idt.set_idt_entry_err(14, pf_handler);
-    idt.set_idt_entry_err(8, 1, df_handler);  // On #DF, switch to the df-stack (at idx 1)
-    idt.set_idt_entry(Interrupt::TIMER, timer_handler);
-    idt.set_idt_entry(Interrupt::KEYBOARD, keyboard_handler);
-    idt.set_idt_entry(Interrupt::SYSCALL, reinterpret_cast<void(*)(InterruptStackFrame*)>(syscall_handler));
+    // On #DF, switch to the df-stack (at idx 1)
+    idt.set_idt_entry_err(8, 1, df_handler);
     idt.load();
 
     // Init PIC & register interrupts handlers
     pics.init(PIC_1_OFFSET, PIC_2_OFFSET);
+    idt.set_idt_entry(Interrupt::TIMER, timer_handler);
+    idt.set_idt_entry(Interrupt::KEYBOARD, keyboard_handler);
+
+    // Register syscall handler at vector 0x80 with DPL=3 (allows ring 3 to call)
+    idt.set_idt_entry_user(Interrupt::SYSCALL, reinterpret_cast<void(*)(InterruptStackFrame*)>(syscall_handler));
 
     // Disable the timer for now
     pics.disable(Interrupt::TIMER);
@@ -353,6 +357,11 @@ extern "C" void kernel_main_high() {
 
 
     VGA_DBG("We are still alive!")
+
+    // Jump to ring 3 usermode
+    //extern void user_function();
+    out << "Jumping to ring 3... (And scream there)" << out.endl;
+    gdt.jump_to_ring3(user_function);
 
     // Infinite loop
     while (true) {

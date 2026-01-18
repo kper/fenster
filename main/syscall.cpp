@@ -22,3 +22,7 @@ char read_char() {
 void write_char(char c) {
     raw_syscall(WRITE_CHAR, (uint64_t)c);
 }
+
+void exit(int code) {
+    raw_syscall(EXIT, code);
+}
