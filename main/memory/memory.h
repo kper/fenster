@@ -11,9 +11,10 @@
 namespace memory {
     // Forward declarations
     class BlockAllocator;
+    class AreaFrameAllocator;
 
     extern BlockAllocator* kernel_heap;
-    extern FrameAllocator* frame_allocator;
+    extern AreaFrameAllocator* frame_allocator;
 
     // Initialize memory, remap kernel to high addresses, and jump to high half
     // This function does NOT return! It jumps to kernel_main_high()

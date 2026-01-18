@@ -15,7 +15,7 @@ namespace memory {
     BlockAllocator* kernel_heap = &kernel_heap_obj;
 
     alignas(AreaFrameAllocator) static uint8_t frame_allocator_storage[sizeof(AreaFrameAllocator)];
-    FrameAllocator *frame_allocator = nullptr;
+    AreaFrameAllocator *frame_allocator = nullptr;
 
     void init_and_jump_high(BootInfo& boot_info) {
         auto& out = vga::out();
@@ -42,7 +42,7 @@ namespace memory {
 
         // Update frame allocator pointers to high addresses before unmapping
         out << "Updating frame allocator to use high addresses..." << out.endl;
-        ((AreaFrameAllocator*)frame_allocator)->update_pointers_to_high(paging::KERNEL_OFFSET);
+        frame_allocator->update_pointers_to_high(paging::KERNEL_OFFSET);
         frame_allocator = (AreaFrameAllocator*) ((uint64_t)frame_allocator + paging::KERNEL_OFFSET);
 
         out << "Frame allocator updated!" << out.endl;

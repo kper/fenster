@@ -14,7 +14,8 @@
 
 namespace paging {
 
-    void remap_the_kernel(memory::FrameAllocator &allocator, BootInfo &boot_info) {
+    template<typename Allocator>
+    void remap_the_kernel(Allocator &allocator, BootInfo &boot_info) {
         auto& out = vga::out();
         auto temp_raw_page = Page(0xcafebabe);
         auto temp_page = TemporaryPage(temp_raw_page, allocator);
@@ -195,7 +196,8 @@ namespace paging {
         : frame.value().number * PAGE_SIZE + offset;
     }
 
-    void ActivePageTable::map_to(Page page, memory::Frame frame, PageFlags flags, memory::FrameAllocator &allocator) {
+    template<typename Allocator>
+    void ActivePageTable::map_to(Page page, memory::Frame frame, PageFlags flags, Allocator &allocator) {
         // Walk down the page table hierarchy, creating tables as needed
         auto* p3 = p4_table->next_table_create(page.p4_index(), allocator);
         ASSERT(p3 != nullptr, "Out of memory allocating P3 table");
@@ -214,18 +216,21 @@ namespace paging {
         entry.set(frame.start_address(), flags.to_raw());
     }
 
-    void ActivePageTable::map(Page page, PageFlags flags, memory::FrameAllocator &allocator) {
+    template<typename Allocator>
+    void ActivePageTable::map(Page page, PageFlags flags, Allocator &allocator) {
         auto frame = allocator.allocate_frame();
         ASSERT(frame.has_value(), "out of memory");
         map_to(page, frame.value(), flags, allocator);
     }
 
-    void ActivePageTable::identity_map(memory::Frame frame, PageFlags flags, memory::FrameAllocator &allocator) {
+    template<typename Allocator>
+    void ActivePageTable::identity_map(memory::Frame frame, PageFlags flags, Allocator &allocator) {
         auto page = Page::containing_address(frame.start_address());
         map_to(page, frame, flags, allocator);
     }
 
-    void ActivePageTable::unmap(Page page, memory::FrameAllocator &allocator) {
+    template<typename Allocator>
+    void ActivePageTable::unmap(Page page, Allocator &allocator) {
         ASSERT(translate(page.start_addr()).has_value(), "Page not mapped");
 
         auto* p3 = p4_table->get_next_table(page.p4_index());
@@ -314,7 +319,8 @@ namespace paging {
      * The tiny allocator has control over exaclty 3 frames that can be used
      * by the TemporaryPage.
      */
-    TinyAllocator::TinyAllocator(FrameAllocator& allocator) {
+    template<typename Allocator>
+    TinyAllocator::TinyAllocator(Allocator& allocator) {
         for (int i = 0; i < 3; i++) {
             frames[i] = allocator.allocate_frame().expect("Out of memory");
             available[i] = true;
@@ -343,7 +349,8 @@ namespace paging {
     }
 
 
-    TemporaryPage::TemporaryPage(Page page, memory::FrameAllocator& allocator): page(page), allocator(TinyAllocator(allocator)) {
+    template<typename Allocator>
+    TemporaryPage::TemporaryPage(Page page, Allocator& allocator): page(page), allocator(TinyAllocator(allocator)) {
     }
 
     VirtualAddress TemporaryPage::map(memory::Frame frame, ActivePageTable &active_table) {
@@ -360,6 +367,18 @@ namespace paging {
         return reinterpret_cast<P1Table*>(map(frame, active_page_table));
     }
 
+    // Explicit template instantiations for concrete allocator types
+    template void remap_the_kernel<memory::AreaFrameAllocator>(memory::AreaFrameAllocator&, BootInfo&);
+    template void ActivePageTable::map_to<memory::AreaFrameAllocator>(Page, memory::Frame, PageFlags, memory::AreaFrameAllocator&);
+    template void ActivePageTable::map<memory::AreaFrameAllocator>(Page, PageFlags, memory::AreaFrameAllocator&);
+    template void ActivePageTable::identity_map<memory::AreaFrameAllocator>(memory::Frame, PageFlags, memory::AreaFrameAllocator&);
+    template void ActivePageTable::unmap<memory::AreaFrameAllocator>(Page, memory::AreaFrameAllocator&);
+    template TinyAllocator::TinyAllocator(memory::AreaFrameAllocator&);
+    template TemporaryPage::TemporaryPage(Page, memory::AreaFrameAllocator&);
 
+    template void ActivePageTable::map_to<TinyAllocator>(Page, memory::Frame, PageFlags, TinyAllocator&);
+    template void ActivePageTable::map<TinyAllocator>(Page, PageFlags, TinyAllocator&);
+    template void ActivePageTable::identity_map<TinyAllocator>(memory::Frame, PageFlags, TinyAllocator&);
+    template void ActivePageTable::unmap<TinyAllocator>(Page, TinyAllocator&);
 
 }

@@ -40,20 +40,10 @@ namespace memory {
     };
 
     /**
-     * Abstract interface for frame allocators
-     * All frame allocators must implement this interface
-     */
-    class FrameAllocator {
-    public:
-        virtual rnt::Optional<Frame> allocate_frame() = 0;
-        virtual void deallocate_frame(Frame frame) = 0;
-    };
-
-    /**
      * Frame allocator that uses memory areas from multiboot memory map
      * Allocates frames from available physical memory regions
      */
-    class AreaFrameAllocator : public FrameAllocator {
+    class AreaFrameAllocator {
     private:
         const Multiboot2TagMmap* mmap;
         const MemoryArea* current_area;
@@ -96,13 +86,13 @@ namespace memory {
         /**
          * Allocate a single frame
          */
-        rnt::Optional<Frame> allocate_frame() override;
+        rnt::Optional<Frame> allocate_frame();
 
         /**
          * Deallocate a frame (currently a no-op, future: bitmap allocator)
          * @param frame Frame to deallocate
          */
-        void deallocate_frame(Frame frame) override;
+        void deallocate_frame(Frame frame);
 
         /**
          * Update internal pointers to use high addresses after jumping to higher-half

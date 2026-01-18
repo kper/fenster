@@ -369,7 +369,7 @@ extern "C" void kernel_main_high() {
     }
 }
 
-void allocation_test(memory::FrameAllocator &allocator) {
+void allocation_test(memory::AreaFrameAllocator &allocator) {
     auto& out = vga::out();
     out << "Allocating all available frames..." << out.endl;
 

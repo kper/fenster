@@ -30,7 +30,8 @@ namespace paging {
     constexpr uint64_t KERNEL_OFFSET = 0xFFFF800000000000ULL;
     constexpr uint16_t KERNEL_P4_INDEX = 510;
 
-    void remap_the_kernel(memory::FrameAllocator& allocator, BootInfo& boot_info);
+    template<typename Allocator>
+    void remap_the_kernel(Allocator& allocator, BootInfo& boot_info);
 
     /**
      * Jump to higher-half kernel and execute continuation function
@@ -113,16 +114,20 @@ namespace paging {
         rnt::Optional<PhysicalAddress> translate(VirtualAddress vaddr);
 
         // Map a page to a specific frame with given flags
-        void map_to(Page page, memory::Frame frame, PageFlags flags, memory::FrameAllocator& allocator);
+        template<typename Allocator>
+        void map_to(Page page, memory::Frame frame, PageFlags flags, Allocator& allocator);
 
         // Map a page (allocates a frame automatically)
-        void map(Page page, PageFlags flags, memory::FrameAllocator& allocator);
+        template<typename Allocator>
+        void map(Page page, PageFlags flags, Allocator& allocator);
 
         // Identity map a frame (virtual address = physical address)
-        void identity_map(memory::Frame frame, PageFlags flags, memory::FrameAllocator& allocator);
+        template<typename Allocator>
+        void identity_map(memory::Frame frame, PageFlags flags, Allocator& allocator);
 
         // Unmap a page
-        void unmap(Page page, memory::FrameAllocator& allocator);
+        template<typename Allocator>
+        void unmap(Page page, Allocator& allocator);
 
         // Swaps the internal P4 table pointer between the active page and the
         // given inactive one. After this operation,
@@ -148,12 +153,13 @@ namespace paging {
      * The tiny allocator has control over exactly 3 frames that can be used
      * by the TemporaryPage.
      */
-    class TinyAllocator: public memory::FrameAllocator {
+    class TinyAllocator {
         memory::Frame frames[3];
         bool          available[3];
 
     public:
-        TinyAllocator(FrameAllocator& allocator);
+        template<typename Allocator>
+        TinyAllocator(Allocator& allocator);
         rnt::Optional<memory::Frame> allocate_frame();
         void deallocate_frame(memory::Frame frame);
     };
@@ -163,7 +169,8 @@ namespace paging {
         TinyAllocator allocator;
 
         public:
-        TemporaryPage(Page page, memory::FrameAllocator& allocator);
+        template<typename Allocator>
+        TemporaryPage(Page page, Allocator& allocator);
         VirtualAddress map(memory::Frame frame, ActivePageTable& active_table);
         void unmap(ActivePageTable& active_table);
         P1Table* map_table_frame(memory::Frame frame, ActivePageTable& active_page_table);

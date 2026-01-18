@@ -119,9 +119,9 @@ public:
     }
 
     // Get or create next level table - allocates a frame if entry is not present
-    template<int L = Level>
+    template<int L = Level, typename Allocator>
     typename enable_if<(L > 1), Table<L - 1>*>::type
-    next_table_create(size_t index, memory::FrameAllocator& allocator) {
+    next_table_create(size_t index, Allocator& allocator) {
         if (entries[index].is_present()) {
             ASSERT(!entries[index].is_huge(), "Mapping code does not yet support huge pages.");
             return get_next_table<L>(index);
