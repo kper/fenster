@@ -9,8 +9,10 @@
 #include "virtual/BumpAllocator.h"
 
 namespace memory {
+    // Forward declarations
+    class BlockAllocator;
 
-    extern Allocator* kernel_heap;
+    extern BlockAllocator* kernel_heap;
     extern FrameAllocator* frame_allocator;
 
     // Initialize memory, remap kernel to high addresses, and jump to high half

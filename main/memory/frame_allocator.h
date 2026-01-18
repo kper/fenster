@@ -16,7 +16,7 @@ struct MemoryArea;
 
 namespace memory {
 
-    class Allocator;
+    class BlockAllocator;
 
     /**
      * Simple LIFO free list for frames.
@@ -25,7 +25,7 @@ namespace memory {
     class FreeList {
     public:
         void init(Frame* backing_buffer, size_t capacity);
-        bool push(Frame frame, Allocator* heap);
+        bool push(Frame frame, BlockAllocator* heap);
         rnt::Optional<Frame> pop();
         bool empty() const { return size_ == 0; }
 
@@ -33,10 +33,10 @@ namespace memory {
         Frame*   data_ = nullptr;
         size_t   capacity_ = 0;
         size_t   size_ = 0;
-        Allocator* heap_owner_ = nullptr;
+        BlockAllocator* heap_owner_ = nullptr;
         bool     uses_heap_storage_ = false;
 
-        bool try_grow(Allocator* heap);
+        bool try_grow(BlockAllocator* heap);
     };
 
     /**

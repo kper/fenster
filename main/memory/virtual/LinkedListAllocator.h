@@ -26,14 +26,14 @@ namespace memory {
         }
     };
 
-    class LinkedListAllocator: public Allocator {
+    class LinkedListAllocator {
         ListNode head;
 
     public:
         LinkedListAllocator(): head(ListNode(0)) {}
         void init(size_t heap_start, size_t heap_size);
-        void *allocate(size_t size, size_t align) override;
-        void deallocate(void *ptr, size_t size) override;
+        void *allocate(size_t size, size_t align);
+        void deallocate(void *ptr, size_t size);
 
     private:
         struct FindResult {ListNode *node; VirtualAddress start_addr;};

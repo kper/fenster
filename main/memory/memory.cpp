@@ -12,7 +12,7 @@ extern "C" void kernel_main_high() __attribute__((noreturn));
 namespace memory {
 
     static BlockAllocator(kernel_heap_obj);
-    Allocator* kernel_heap = &kernel_heap_obj;
+    BlockAllocator* kernel_heap = &kernel_heap_obj;
 
     alignas(AreaFrameAllocator) static uint8_t frame_allocator_storage[sizeof(AreaFrameAllocator)];
     FrameAllocator *frame_allocator = nullptr;
@@ -47,9 +47,6 @@ namespace memory {
 
         out << "Frame allocator updated!" << out.endl;
 
-        // Update kernel_heap pointer
-        kernel_heap = (Allocator*) (((uint64_t) &kernel_heap_obj) + paging::KERNEL_OFFSET);
-
         out << "Jumping to high addresses..." << out.endl;
         // Jump to higher-half addresses and continue at kernel_main_high()
         // This function does NOT return!
@@ -57,8 +54,15 @@ namespace memory {
     }
 
     void init_heap() {
-        // Initialize heap (still at low addresses, but memory is mapped at both low and high)
+        auto& out = vga::out();
+        // Initialize heap at high addresses (called after jumping to high half)
+        out << "Initializing heap..." << out.endl;
+
+        // No need for placement new anymore - no vtables!
         kernel_heap_obj.init(HEAP_START, HEAP_SIZE);
+        kernel_heap = &kernel_heap_obj;
+
+        out << "Heap initialized at " << hex << (uint64_t)kernel_heap << out.endl;
     }
 }
 

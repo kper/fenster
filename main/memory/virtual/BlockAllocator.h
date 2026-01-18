@@ -21,14 +21,14 @@ namespace memory {
         explicit BlockNode(BlockNode* next): next(next) {};
     };
 
-    class BlockAllocator: public Allocator{
+    class BlockAllocator {
         BlockNode* heads[BLOCK_SIZE_COUNT];
         LinkedListAllocator fallback_allocator;
     public:
         BlockAllocator(): heads{nullptr}, fallback_allocator(LinkedListAllocator()) {}
         void init(size_t heap_start, size_t heap_size);
-        void *allocate(size_t size, size_t align) override;
-        void deallocate(void *ptr, size_t size) override;
+        void *allocate(size_t size, size_t align);
+        void deallocate(void *ptr, size_t size);
 
     private:
         void *fallback_alloc(size_t size, size_t alignment);

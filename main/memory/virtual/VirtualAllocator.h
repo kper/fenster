@@ -14,11 +14,8 @@ namespace memory {
     constexpr size_t HEAP_START = 0000'001'000'000'0000 + paging::KERNEL_OFFSET;
     constexpr size_t HEAP_SIZE = 100 * 1024; // 100 KiB
 
-    class Allocator {
-        public:
-        virtual void* allocate(size_t size, size_t align) = 0;
-        virtual void  deallocate(void* ptr, size_t size) = 0;
-    };
+    // Note: Removed Allocator base class to avoid vtables
+    // BlockAllocator and LinkedListAllocator are now concrete types
 
     inline size_t is_power_of_2(size_t size) {
         return size != 0 && (size & (size - 1)) == 0;

@@ -9,6 +9,7 @@ namespace vga {
     // With PIC (-fPIC), this automatically resolves to the correct address
     VgaOutStream& out();
 }
+#define VGA_DBG(str) vga::out() << "[" << __FILE__ << ":" << __LINE__ << "] " << str << vga::out().endl;
 
 enum Color
 {

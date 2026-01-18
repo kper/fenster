@@ -6,11 +6,11 @@
 #include "AreaFrameIterator.h"
 #include "vga.hpp"
 #include "../bootinfo.hpp"
-#include "virtual/VirtualAllocator.h"
+#include "virtual/BlockAllocator.h"
 
 namespace memory {
 
-    extern Allocator* kernel_heap;
+    extern BlockAllocator* kernel_heap;
 
     void FreeList::init(Frame *backing_buffer, size_t capacity) {
         data_ = backing_buffer;
@@ -20,7 +20,7 @@ namespace memory {
         uses_heap_storage_ = false;
     }
 
-    bool FreeList::try_grow(Allocator *heap) {
+    bool FreeList::try_grow(BlockAllocator *heap) {
         if (heap == nullptr) {
             return false;
         }
@@ -48,7 +48,7 @@ namespace memory {
         return true;
     }
 
-    bool FreeList::push(Frame frame, Allocator *heap) {
+    bool FreeList::push(Frame frame, BlockAllocator *heap) {
         if (size_ >= capacity_) {
             if (!try_grow(heap)) {
                 return false;

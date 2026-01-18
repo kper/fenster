@@ -10,15 +10,15 @@
 #include "runtime/atomic.h"
 
 namespace memory {
-    class BumpAllocator: public Allocator {
+    class BumpAllocator {
         VirtualAddress heap_start;
         VirtualAddress heap_end;
         AtomicU64 next;
 
     public:
         BumpAllocator(VirtualAddress heap_start, VirtualAddress heap_end);
-        void *allocate(size_t size, size_t align) override;
-        void  deallocate(void *ptr, size_t size) override;
+        void *allocate(size_t size, size_t align);
+        void  deallocate(void *ptr, size_t size);
     };
 
 

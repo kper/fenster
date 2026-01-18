@@ -9,6 +9,7 @@
 #include "bootinfo.hpp"
 #include "syscall.h"
 #include "memory/memory.h"
+#include "memory/virtual/BlockAllocator.h"
 #include "paging/paging.h"
 #include "x86/regs.h"
 
@@ -300,11 +301,16 @@ extern "C" void kernel_main_high() {
     // Update VGA buffer to high address
     out.update_buffer_address(0xb8000 + paging::KERNEL_OFFSET);
 
-    paging::unmap_lower_half();
-
     out << GREEN << "Now running at high addresses! Proof: " << hex << (uint64_t) &kernel_main_high << WHITE << out.endl;
 
+    // Initialize heap BEFORE unmapping lower half
+    // This is necessary because placement new for BlockAllocator needs access to constructor code
     memory::init_heap();
+
+    // Now it's safe to unmap the lower half
+    paging::unmap_lower_half();
+
+    out << "Lower half unmapped successfully!" << out.endl;
 
     // Initialize GDT, TSS + IST (once, at high addresses)
     gdt.init();
@@ -337,13 +343,16 @@ extern "C" void kernel_main_high() {
 
     out << "Syscall test complete!" << out.endl;
 
-    // out << "Test heap memory allocation" << out.endl;
-    // out << "Heap addr " << memory::kernel_heap << out.endl;
-    // int * ptr = (int*) memory::kernel_heap->allocate(sizeof(int), 0);
-    // out << "  ptr: " << ptr << out.endl;
+    out << "Testing heap memory allocation..." << out.endl;
+    int * ptr = (int*) memory::kernel_heap->allocate(sizeof(int), 0);
+    out << "  ptr: " << ptr << out.endl;
+    *ptr = 123;
+    memory::kernel_heap->deallocate(ptr, sizeof(int));
+    out << "  value: " << *ptr << out.endl;
+    out << "Heap memory allocation test complete!" << out.endl;
 
 
-    out << "We are still alive!" << out.endl;
+    VGA_DBG("We are still alive!")
 
     // Infinite loop
     while (true) {
