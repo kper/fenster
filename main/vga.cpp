@@ -205,6 +205,11 @@ void VgaOutStream::clear()
     format = { WHITE, BLACK };
 }
 
+void VgaOutStream::update_buffer_address(uint64_t new_address)
+{
+    vgaBuffer = reinterpret_cast<volatile char*>(new_address);
+}
+
 void VgaOutStream::setCursor(int row, int col)
 {
     uint16_t pos = row * width + col;

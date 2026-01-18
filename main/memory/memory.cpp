@@ -33,6 +33,10 @@ namespace memory {
         // Step 2: Jump to higher-half addresses
         paging::jump_to_higher_half();
 
+        // Step 2.5: Update VGA buffer pointer to high address
+        out.update_buffer_address(0xb8000 + paging::KERNEL_OFFSET);
+        out << "VGA buffer updated to high address" << out.endl;
+
         // Step 3: Rebuild GDT/IDT with high addresses
         out << "Rebuilding GDT and IDT with high addresses..." << out.endl;
         gdt.init();

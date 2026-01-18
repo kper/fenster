@@ -74,6 +74,7 @@ public:
     VgaOutStream &operator<<(VgaOutStream& (*manip)(VgaOutStream&));
 
     void clear();
+    void update_buffer_address(uint64_t new_address);
 
 private:
     static const int width = 80;

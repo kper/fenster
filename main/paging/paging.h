@@ -32,6 +32,7 @@ namespace paging {
 
     void remap_the_kernel(memory::FrameAllocator& allocator, BootInfo& boot_info);
     void jump_to_higher_half();
+    void unmap_lower_half(memory::FrameAllocator& allocator);
 
     /**
      * Page flags for mapping operations

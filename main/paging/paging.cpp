@@ -111,6 +111,24 @@ namespace paging {
         out << "Now running at higher-half addresses!" << out.endl;
     }
 
+    void unmap_lower_half(memory::FrameAllocator& allocator) {
+        using vga::out;
+
+        out << "Unmapping lower-half identity mapping..." << out.endl;
+
+        // Get the P4 table through recursive mapping
+        auto p4_table = cr3::get_virt_p4_table();
+
+        // Clear P4[0] which contains the identity mapping
+        // This unmaps the entire lower 512 GB (0x0 - 0x7FFFFFFFFF)
+        p4_table->get_entries()[0].clear();
+
+        // Flush TLB to ensure the unmapping takes effect
+        cr3::flush();
+
+        out << "Lower-half unmapped. Kernel now only accessible at high addresses." << out.endl;
+    }
+
 
     // PageFlags implementations
     uint64_t PageFlags::to_raw() const {
