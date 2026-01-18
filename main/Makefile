@@ -38,6 +38,7 @@ LDFLAGS  := -target $(TARGET_ARCH) -nostdlib -ffreestanding -fno-sanitize=all -T
 SOURCES_CPP := \
     pic.cpp \
     vga.cpp \
+    keyboard.cpp \
     gdt.cpp \
     idt.cpp \
     bootinfo.cpp \

@@ -19,8 +19,24 @@ char read_char() {
     return (char)(uint64_t)(raw_syscall(READ_CHAR, 0));
 }
 
+char can_read_char() {
+    return (bool)(raw_syscall(CAN_READ_CHAR, 0));
+}
+
 void write_char(char c) {
     raw_syscall(WRITE_CHAR, (uint64_t)c);
+}
+
+void write(char *c) {
+    raw_syscall(WRITE, (uint64_t)c);
+}
+
+void *malloc(uint64_t size) {
+    return raw_syscall(MALLOC, size);
+}
+
+void free(void *ptr) {
+    raw_syscall(FREE, (uint64_t)ptr);
 }
 
 void exit(int code) {
