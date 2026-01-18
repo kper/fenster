@@ -103,6 +103,13 @@ namespace memory {
          * @param frame Frame to deallocate
          */
         void deallocate_frame(Frame frame) override;
+
+        /**
+         * Update internal pointers to use high addresses
+         * Call this after jumping to higher-half and before unmapping lower-half
+         * @param offset Offset to add to all pointers (typically KERNEL_OFFSET)
+         */
+        void update_pointers_to_high(uint64_t offset);
     };
 }
 #endif //MAIN_FRAME_H

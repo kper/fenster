@@ -266,31 +266,35 @@ __attribute__((naked)) void syscall_handler()
     );
 }
 
+// Function to setup all IDT handlers (can be called multiple times after GDT/IDT rebuilds)
+extern "C" void setup_idt_handlers() {
+    idt.set_idt_entry(0, de_handler);
+    idt.set_idt_entry(6, ud_handler);
+    idt.set_idt_entry_err(14, pf_handler);
+    idt.set_idt_entry_err(8, 1, df_handler);
+    idt.set_idt_entry(Interrupt::TIMER, timer_handler);
+    idt.set_idt_entry(Interrupt::KEYBOARD, keyboard_handler);
+    idt.set_idt_entry(Interrupt::SYSCALL, reinterpret_cast<void(*)(InterruptStackFrame*)>(syscall_handler));
+}
+
+// This function is called after memory init completes at high addresses
+extern "C" void kernel_main_continuation() __attribute__((noreturn));
+
 extern "C" void kernel_main(void *mb_info_addr)
 {
     // Sets up GDT, TSS + IST
     gdt.init();
 
-    // Set up the IDT
-    idt.set_idt_entry(0, de_handler);
-    idt.set_idt_entry(6, ud_handler);
-    idt.set_idt_entry_err(14, pf_handler);
-    // On #DF, switch to the df-stack (at idx 1)
-    idt.set_idt_entry_err(8, 1, df_handler);
+    // Set up the IDT with all handlers
+    setup_idt_handlers();
     idt.load();
-    
-    
-    // Init PIC & register interrupts handlers
-    pics.init(PIC_1_OFFSET, PIC_2_OFFSET);
-    idt.set_idt_entry(Interrupt::TIMER, timer_handler);
-    idt.set_idt_entry(Interrupt::KEYBOARD, keyboard_handler);
 
-    // Register syscall handler at vector 0x80
-    idt.set_idt_entry(Interrupt::SYSCALL, reinterpret_cast<void(*)(InterruptStackFrame*)>(syscall_handler));
+    // Init PIC
+    pics.init(PIC_1_OFFSET, PIC_2_OFFSET);
 
     // Disable the timer for now
     pics.disable(Interrupt::TIMER);
-    
+
     interrupts_enable();
 
 
@@ -308,9 +312,16 @@ extern "C" void kernel_main(void *mb_info_addr)
     using vga::out;
     vga::out << vga::out.endl;
 
+    // Note: memory::init() does not return! It jumps to high addresses
+    // and eventually calls kernel_main_continuation()
     memory::init(*boot_info, gdt, idt);
 
-    // allocator.allocate_frame();
+    __builtin_unreachable();
+}
+
+// Continuation of kernel_main after memory init at high addresses
+extern "C" void kernel_main_continuation() {
+    using vga::out;
 
     // Test syscall from kernel space
     out << "Testing syscall mechanism..." << out.endl;
@@ -321,6 +332,11 @@ extern "C" void kernel_main(void *mb_info_addr)
     out << "Syscall test complete!" << out.endl;
 
     out << "We are still alive!" << out.endl;
+
+    // Infinite loop
+    while (true) {
+        asm volatile("hlt");
+    }
 }
 
 void allocation_test(memory::FrameAllocator &allocator) {

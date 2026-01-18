@@ -31,7 +31,14 @@ namespace paging {
     constexpr uint16_t KERNEL_P4_INDEX = 510;
 
     void remap_the_kernel(memory::FrameAllocator& allocator, BootInfo& boot_info);
-    void jump_to_higher_half();
+
+    /**
+     * Jump to higher-half kernel and execute continuation function
+     * This function does not return! It adjusts RSP to high address and calls the continuation.
+     * @param continuation Function to call after jumping to high addresses (must be __attribute__((noreturn)))
+     */
+    void jump_to_higher_half(void (*continuation)()) __attribute__((noreturn));
+
     void unmap_lower_half(memory::FrameAllocator& allocator);
 
     /**

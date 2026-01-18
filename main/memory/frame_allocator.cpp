@@ -180,4 +180,25 @@ namespace memory {
         // Store the frame for later reuse. Grow using the heap if available.
         ASSERT(free_list.push(frame, kernel_heap), "Frame free list exhausted");
     }
+
+    void AreaFrameAllocator::update_pointers_to_high(uint64_t offset) {
+        // Update mmap pointer to high address
+        if (mmap != nullptr) {
+            mmap = reinterpret_cast<const Multiboot2TagMmap*>(
+                reinterpret_cast<uint64_t>(mmap) + offset
+            );
+        }
+
+        // Update current_area pointer if it's valid
+        if (current_area != nullptr) {
+            current_area = reinterpret_cast<const MemoryArea*>(
+                reinterpret_cast<uint64_t>(current_area) + offset
+            );
+        }
+
+        // Note: AreaFrameIterator doesn't store pointers, only frame numbers,
+        // so it doesn't need updating
+        // Note: FreeList uses static storage initially, which is part of this object,
+        // so it will be accessible at high addresses once we're running there
+    }
 }

@@ -89,26 +89,32 @@ namespace paging {
         // active_table.unmap(old_p4_page, allocator);
     }
 
-    void jump_to_higher_half() {
+    void jump_to_higher_half(void (*continuation)()) {
         using vga::out;
 
         out << "Jumping to higher-half kernel..." << out.endl;
 
-        // Assembly code to jump to high address
-        // The function we return to will now be at high address because of PIC
+        // Adjust the continuation function pointer to high address
+        uint64_t continuation_addr = reinterpret_cast<uint64_t>(continuation);
+        out << "Continuation address (low): " << hex << continuation_addr << out.endl;
+        uint64_t high_continuation = continuation_addr + KERNEL_OFFSET;
+        out << "Continuation address (high): " << hex << high_continuation << out.endl;
+
+        // Assembly code to jump to high address and call continuation
+        // This function does NOT return - it calls the continuation directly
         asm volatile(
-            "mov %0, %%rax\n\t"          // Load KERNEL_OFFSET into rax
-            "add %%rax, %%rsp\n\t"       // Adjust stack pointer to high address
-            "lea 1f(%%rip), %%rbx\n\t"   // Load address of label 1 (RIP-relative, gets low addr)
-            "add %%rax, %%rbx\n\t"       // Add offset to get high address
-            "jmp *%%rbx\n\t"             // Jump to high address
-            "1:\n\t"                     // Continue execution here (at high address now)
+            "mov %[offset], %%rax\n\t"       // Load KERNEL_OFFSET into rax
+            "add %%rax, %%rsp\n\t"           // Adjust stack pointer to high address
+            "add %%rax, %%rbp\n\t"           // Adjust base pointer to high address
+            "mov %[cont], %%rbx\n\t"         // Load high continuation address into rbx
+            "xor %%rbp, %%rbp\n\t"           // Clear RBP (we're starting fresh at high addresses)
+            "jmp *%%rbx\n\t"                 // Jump to continuation (never returns)
             :
-            : "r"(KERNEL_OFFSET)
+            : [offset] "r"(KERNEL_OFFSET), [cont] "r"(high_continuation)
             : "rax", "rbx", "memory"
         );
 
-        out << "Now running at higher-half addresses!" << out.endl;
+        __builtin_unreachable();
     }
 
     void unmap_lower_half(memory::FrameAllocator& allocator) {
