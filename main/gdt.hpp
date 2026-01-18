@@ -1,3 +1,6 @@
+#ifndef MAIN_GDT_HPP
+#define MAIN_GDT_HPP
+
 #include <stdint.h>
 
 struct PrivilegeStackTable
@@ -49,3 +52,5 @@ private:
     TaskStateSegment tss;
     uint8_t df_stack[DF_SIZE];
 };
+
+#endif // MAIN_GDT_HPP

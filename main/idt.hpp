@@ -1,3 +1,6 @@
+#ifndef MAIN_IDT_HPP
+#define MAIN_IDT_HPP
+
 #include <stdint.h>
 #include "gdt.hpp"
 
@@ -29,15 +32,17 @@ struct IdtDescriptor
 class IDT
 {
 public:
-    
+
     void set_idt_entry(uint8_t vec, void (*handler)(InterruptStackFrame *));
     void set_idt_entry_err(uint8_t vec, void (*handler)(InterruptStackFrame *, uint64_t));
-    
+
     void set_idt_entry(uint8_t vec, uint8_t ist_vec, void (*handler)(InterruptStackFrame *));
     void set_idt_entry_err(uint8_t vec, uint8_t ist_vec, void (*handler)(InterruptStackFrame *, uint64_t));
-    
+
     void load();
 
 private:
     IdtEntry idt[256];
 };
+
+#endif // MAIN_IDT_HPP

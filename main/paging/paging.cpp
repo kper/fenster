@@ -9,6 +9,8 @@
 #include "panic.h"
 #include "vga.hpp"
 #include "memory/frame.h"
+#include "gdt.hpp"
+#include "idt.hpp"
 
 namespace paging {
 
@@ -75,8 +77,21 @@ namespace paging {
         // swap the active table and the new table
         active_table.swap(new_table);
 
-        // Now we have double mapping active: low (identity) and high addresses
-        // Jump to high address and adjust stack pointer
+        out << "Kernel remapped with double mapping (low + high addresses)" << out.endl;
+
+        // TODO: Unmap low identity mapping (step 5)
+        // because of swap, the new_table is now actually the old table
+        // auto old_table = new_table;
+        // we reuse the old p4_frame (which is below the stack bottom)
+        // as a guard page that is unmapped and would cause a page fault
+        // instead of silently corrupting the .bss data
+        // auto old_p4_page = Page::containing_address(old_table.p4_frame.start_address());
+        // active_table.unmap(old_p4_page, allocator);
+    }
+
+    void jump_to_higher_half() {
+        using vga::out;
+
         out << "Jumping to higher-half kernel..." << out.endl;
 
         // Assembly code to jump to high address
@@ -93,18 +108,7 @@ namespace paging {
             : "rax", "rbx", "memory"
         );
 
-        out << "Now running at higher-half addresses! Proof: " << hex << (uint64_t) &remap_the_kernel << out.endl;
-
-        // TODO: Rebuild GDT/IDT here (step 4)
-
-        // TODO: Unmap low identity mapping (step 5)
-        // because of swap, the new_table is now actually the old table
-        // auto old_table = new_table;
-        // we reuse the old p4_frame (which is below the stack bottom)
-        // as a guard page that is unmapped and would cause a page fault
-        // instead of silently corrupting the .bss data
-        // auto old_p4_page = Page::containing_address(old_table.p4_frame.start_address());
-        // active_table.unmap(old_p4_page, allocator);
+        out << "Now running at higher-half addresses!" << out.endl;
     }
 
 

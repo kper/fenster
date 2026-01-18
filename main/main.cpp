@@ -308,7 +308,7 @@ extern "C" void kernel_main(void *mb_info_addr)
     using vga::out;
     vga::out << vga::out.endl;
 
-    memory::init(*boot_info);
+    memory::init(*boot_info, gdt, idt);
 
     // allocator.allocate_frame();
 

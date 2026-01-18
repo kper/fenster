@@ -31,6 +31,7 @@ namespace paging {
     constexpr uint16_t KERNEL_P4_INDEX = 510;
 
     void remap_the_kernel(memory::FrameAllocator& allocator, BootInfo& boot_info);
+    void jump_to_higher_half();
 
     /**
      * Page flags for mapping operations

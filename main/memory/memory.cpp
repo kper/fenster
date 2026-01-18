@@ -15,7 +15,9 @@ namespace memory {
     alignas(AreaFrameAllocator) static uint8_t frame_allocator_storage[sizeof(AreaFrameAllocator)];
     FrameAllocator *frame_allocator = nullptr;
 
-    void init(BootInfo& boot_info) {
+    void init(BootInfo& boot_info, GDT& gdt, IDT& idt) {
+        using vga::out;
+
         // enable NO-EXECUTE bit for pages
         efer::enable_nxe_bit();
         // enable WRITE project bit for pages
@@ -25,8 +27,19 @@ namespace memory {
         auto temp_var = AreaFrameAllocator::from_boot_info(boot_info);
         frame_allocator = new (frame_allocator_storage) AreaFrameAllocator(rnt::move(temp_var));
 
+        // Step 1: Remap kernel with double mapping (low + high)
         paging::remap_the_kernel(*frame_allocator, boot_info);
 
+        // Step 2: Jump to higher-half addresses
+        paging::jump_to_higher_half();
+
+        // Step 3: Rebuild GDT/IDT with high addresses
+        out << "Rebuilding GDT and IDT with high addresses..." << out.endl;
+        gdt.init();
+        idt.load();
+        out << "GDT and IDT rebuilt successfully!" << out.endl;
+
+        // Step 4: Map heap at high addresses
         auto heap_start_page = paging::Page::containing_address(HEAP_START);
         auto heap_end_page = paging::Page::containing_address(HEAP_START + HEAP_SIZE);
         for (auto i = heap_start_page.number; i <= heap_end_page.number; i++) {
