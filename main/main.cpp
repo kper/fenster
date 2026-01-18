@@ -55,7 +55,7 @@ __attribute__((interrupt)) void ud_handler(InterruptStackFrame *frame)
 __attribute__((interrupt)) void df_handler(InterruptStackFrame *frame, uint64_t code)
 {
     VgaFormat before = vga::out.format;
-    vga::out << YELLOW << "Exception: Double Fault" << before << vga::out.endl;
+    vga::out << YELLOW << "Exception: Double Fault [code: "<< code << "]" << before << vga::out.endl;
     print_stack_frame(frame);
     asm volatile("hlt");
 }
@@ -286,8 +286,8 @@ extern "C" void kernel_main(void *mb_info_addr)
     idt.set_idt_entry(Interrupt::TIMER, timer_handler);
     idt.set_idt_entry(Interrupt::KEYBOARD, keyboard_handler);
 
-    // Register syscall handler at vector 0x80
-    idt.set_idt_entry(Interrupt::SYSCALL, reinterpret_cast<void(*)(InterruptStackFrame*)>(syscall_handler));
+    // Register syscall handler at vector 0x80 with DPL=3 (allows ring 3 to call)
+    idt.set_idt_entry_user(Interrupt::SYSCALL, reinterpret_cast<void(*)(InterruptStackFrame*)>(syscall_handler));
 
     // Disable the timer for now
     pics.disable(Interrupt::TIMER);

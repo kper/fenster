@@ -29,13 +29,16 @@ struct IdtDescriptor
 class IDT
 {
 public:
-    
+
     void set_idt_entry(uint8_t vec, void (*handler)(InterruptStackFrame *));
     void set_idt_entry_err(uint8_t vec, void (*handler)(InterruptStackFrame *, uint64_t));
-    
+
     void set_idt_entry(uint8_t vec, uint8_t ist_vec, void (*handler)(InterruptStackFrame *));
     void set_idt_entry_err(uint8_t vec, uint8_t ist_vec, void (*handler)(InterruptStackFrame *, uint64_t));
-    
+
+    // Set IDT entry with DPL=3 (allows ring 3 to call this interrupt)
+    void set_idt_entry_user(uint8_t vec, void (*handler)(InterruptStackFrame *));
+
     void load();
 
 private:
