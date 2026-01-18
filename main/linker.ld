@@ -21,6 +21,10 @@ SECTIONS
         *(.eh_frame_hdr*)
     }
 
+    .got : ALIGN(4K) {
+        *(.got*)
+    }
+
     .init_array : ALIGN(4k) {
         *(.init_array*)
     }

@@ -31,6 +31,7 @@ namespace paging {
                 if (!section->is_allocated()) {
                     continue;
                 }
+                // out << "checking section " << elf->get_section_name(section) << " at addr: " << hex << section->addr << ", size: " << size << section->size << out.endl;
                 ASSERT(section->addr % PAGE_SIZE == 0, "Elf sections must be page alined");
                 out << "mapping section " << elf->get_section_name(section) << " at addr: " << hex << section->addr << ", size: " << size << section->size << out.endl;
                 auto flags = PageFlags::from_elf_section(*section);
