@@ -6,7 +6,7 @@
 #include "vga.hpp"
 
 // External VGA stream instance
-using vga::out;
+auto& out = vga::out();
 
 [[noreturn]] void panic(const char* message, const char* file, int line) {
     // Disable interrupts to prevent further execution

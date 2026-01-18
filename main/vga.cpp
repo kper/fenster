@@ -3,12 +3,18 @@
 
 // the global instance of the output stream
 VgaOutStream VgaOutStream::instance_;
+
 VgaOutStream& VgaOutStream::instance() {
     return instance_;
 }
 
 namespace vga {
-    VgaOutStream &out = VgaOutStream::instance();
+    // Return reference to the global instance
+    // With PIC (-fPIC), this automatically resolves to the correct address
+    // via the Global Offset Table (GOT)
+    VgaOutStream& out() {
+        return VgaOutStream::instance();
+    }
 }
 
 
@@ -104,6 +110,11 @@ VgaOutStream &VgaOutStream::operator<<(uint32_t i)
         d /= 10;
     }
 
+    return *this;
+}
+
+VgaOutStream &VgaOutStream::operator<<(const void * ptr) {
+    *this << hex << reinterpret_cast<uint64_t>(ptr);
     return *this;
 }
 

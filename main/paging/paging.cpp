@@ -15,18 +15,18 @@
 namespace paging {
 
     void remap_the_kernel(memory::FrameAllocator &allocator, BootInfo &boot_info) {
-        using vga::out;
+        auto& out = vga::out();
         auto temp_raw_page = Page(0xcafebabe);
         auto temp_page = TemporaryPage(temp_raw_page, allocator);
 
         auto active_table = ActivePageTable::instance();
-        active_table.print(vga::out, 1);
-        temp_raw_page.debug_print(vga::out);
+        active_table.print(out, 1);
+        temp_raw_page.debug_print(out);
         auto new_table_frame = allocator.allocate_frame().expect("Out of memory");
         auto new_table = InactivePageTable(new_table_frame, active_table, temp_page);
 
 
-        active_table.with(new_table, temp_page, [&boot_info, &allocator](ActivePageTable& map) {
+        active_table.with(new_table, temp_page, [&boot_info, &allocator, &out](ActivePageTable& map) {
             // Map kernel ELF sections at BOTH identity (low) and higher-half (high) addresses
             auto elf = boot_info.get_elf_sections().expect("Elf sections required");
             for (auto section = elf->sections_begin(); section != elf->sections_end(); ++section) {

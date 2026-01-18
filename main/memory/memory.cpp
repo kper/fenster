@@ -18,7 +18,7 @@ namespace memory {
     FrameAllocator *frame_allocator = nullptr;
 
     void init_and_jump_high(BootInfo& boot_info) {
-        using vga::out;
+        auto& out = vga::out();
 
         // Enable NO-EXECUTE bit for pages
         efer::enable_nxe_bit();

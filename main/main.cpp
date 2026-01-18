@@ -19,57 +19,62 @@ static ChainedPICs pics = ChainedPICs();
 // Prepare exception handlers
 
 void print_stack_frame(InterruptStackFrame *frame) {
-    
-    VgaFormat orig = vga::out.format;
+    auto& out = vga::out();
+    VgaFormat orig = out.format;
 
-    vga::out << YELLOW;
-    vga::out << "ExceptionStackFrame {" << vga::out.endl;
+    out << YELLOW;
+    out << "ExceptionStackFrame {" << out.endl;
 
-    vga::out << "  " << "instruction_pointer: " << hex << frame->rip << vga::out.endl;
-    vga::out << "  " << "code_segment: " << frame->cs << vga::out.endl;
-    vga::out << "  " << "cpu_flags: " << frame->rflags << vga::out.endl;
-    vga::out << "  " << "stack_pointer: " << hex << frame->rsp << vga::out.endl;
-    vga::out << "  " << "stack_segment: " << frame->ss << vga::out.endl;
-    vga::out << "  " << "page_fault_linear_addres: " << hex << cr2::get_pfla() << vga::out.endl;
-    vga::out << "}" << vga::out.endl;
-    vga::out << orig;
+    out << "  " << "instruction_pointer: " << hex << frame->rip << out.endl;
+    out << "  " << "code_segment: " << frame->cs << out.endl;
+    out << "  " << "cpu_flags: " << frame->rflags << out.endl;
+    out << "  " << "stack_pointer: " << hex << frame->rsp << out.endl;
+    out << "  " << "stack_segment: " << frame->ss << out.endl;
+    out << "  " << "page_fault_linear_addres: " << hex << cr2::get_pfla() << out.endl;
+    out << "}" << out.endl;
+    out << orig;
 }
 
 __attribute__((interrupt)) void de_handler(InterruptStackFrame *frame)
 {
-    VgaFormat before = vga::out.format;
-    vga::out << YELLOW << "Exception: Division by zero" << before << vga::out.endl;
+    auto& out = vga::out();
+    VgaFormat before = out.format;
+    out << YELLOW << "Exception: Division by zero" << before << out.endl;
     print_stack_frame(frame);
     asm volatile("hlt");
 }
 
 __attribute__((interrupt)) void ud_handler(InterruptStackFrame *frame)
 {
-    VgaFormat before = vga::out.format;
-    vga::out << YELLOW << "Exception: Invalid opcode" << before << vga::out.endl;
+    auto& out = vga::out();
+    VgaFormat before = out.format;
+    out << YELLOW << "Exception: Invalid opcode" << before << out.endl;
     print_stack_frame(frame);
     asm volatile("hlt");
 }
 
 __attribute__((interrupt)) void df_handler(InterruptStackFrame *frame, uint64_t code)
 {
-    VgaFormat before = vga::out.format;
-    vga::out << YELLOW << "Exception: Double Fault" << before << vga::out.endl;
+    auto& out = vga::out();
+    VgaFormat before = out.format;
+    out << YELLOW << "Exception: Double Fault" << before << out.endl;
     print_stack_frame(frame);
     asm volatile("hlt");
 }
 
 __attribute__((interrupt)) void pf_handler(InterruptStackFrame *frame, uint64_t code)
 {
-    VgaFormat before = vga::out.format;
-    vga::out << YELLOW << "Exception: Page Fault (error code: " << code << ")" << before << vga::out.endl;
+    auto& out = vga::out();
+    VgaFormat before = out.format;
+    out << YELLOW << "Exception: Page Fault (error code: " << code << ")" << before << out.endl;
     print_stack_frame(frame);
     asm volatile("hlt");
 }
 
 __attribute__((interrupt)) void timer_handler(InterruptStackFrame *frame)
 {
-    vga::out << ".";
+    auto& out = vga::out();
+    out << ".";
 
     pics.notify_end_of_interrupt(Interrupt::TIMER);
 }
@@ -182,7 +187,8 @@ __attribute__((interrupt)) void keyboard_handler(InterruptStackFrame *frame)
         c = '.';
     }
 
-    vga::out << c;
+    auto& out = vga::out();
+    out << c;
 
     pics.notify_end_of_interrupt(Interrupt::KEYBOARD);
 }
@@ -190,27 +196,28 @@ __attribute__((interrupt)) void keyboard_handler(InterruptStackFrame *frame)
 // The actual syscall handler implementation
 extern "C" void syscall_handler_inner(uint64_t syscall_number, uint64_t syscall_arg)
 {
-    VgaFormat before = vga::out.format;
-    //vga::out << CYAN << "[SYSCALL ] num: " << syscall_number << " arg: " << syscall_arg << before << vga::out.endl;
+    auto& out = vga::out();
+    VgaFormat before = out.format;
+    //out << CYAN << "[SYSCALL ] num: " << syscall_number << " arg: " << syscall_arg << before << out.endl;
     switch (syscall_number) {
         case Syscall::NOOP: {
-            vga::out << CYAN << "[SYSCALL NOOP] Test triggered!" << before << vga::out.endl;
+            out << CYAN << "[SYSCALL NOOP] Test triggered!" << before << out.endl;
             break;
         }
         case Syscall::WRITE_CHAR: {
-            vga::out << static_cast<char>(syscall_arg);
+            out << static_cast<char>(syscall_arg);
             break;
         }
         case Syscall::READ_CHAR: {
-            vga::out << CYAN << "[SYSCALL READ_CHAR] TODO" << before << vga::out.endl;
+            out << CYAN << "[SYSCALL READ_CHAR] TODO" << before << out.endl;
             break;
         }
         case Syscall::EXIT: {
-            vga::out << CYAN << "[SYSCALL EXIT] TODO" << before << vga::out.endl;
+            out << CYAN << "[SYSCALL EXIT] TODO" << before << out.endl;
             break;
         }
         default: {
-            vga::out << CYAN << "[SYSCALL UNKNOWN] System " << syscall_number << before << vga::out.endl;
+            out << CYAN << "[SYSCALL UNKNOWN] System " << syscall_number << before << out.endl;
             break;
         }
     }
@@ -268,15 +275,16 @@ __attribute__((naked)) void syscall_handler()
 
 extern "C" void kernel_main(void *mb_info_addr)
 {
-    vga::out.clear();
-    vga::out << GREEN << "Kernel starting..." << WHITE << vga::out.endl;
+    auto& out = vga::out();
+    out.clear();
+    out << GREEN << "Kernel starting..." << WHITE << out.endl;
 
     BootInfo* boot_info = static_cast<BootInfo *>(mb_info_addr);
 
     // Print kernel memory layout from ELF sections
-    vga::out << vga::out.endl;
-    boot_info->print(vga::out);
-    vga::out << vga::out.endl;
+    out << out.endl;
+    boot_info->print(out);
+    out << out.endl;
 
     // Remap kernel and jump to high addresses
     // This function does NOT return! It jumps to kernel_main_high()
@@ -287,17 +295,16 @@ extern "C" void kernel_main(void *mb_info_addr)
 
 // This function runs entirely at high addresses
 extern "C" void kernel_main_high() {
-    using vga::out;
+    auto& out = vga::out();
 
-    // Now unmap the lower-half identity mapping
-    // paging::unmap_lower_half();
+    // Update VGA buffer to high address
+    out.update_buffer_address(0xb8000 + paging::KERNEL_OFFSET);
+
+    paging::unmap_lower_half();
 
     out << GREEN << "Now running at high addresses! Proof: " << hex << (uint64_t) &kernel_main_high << WHITE << out.endl;
 
     memory::init_heap();
-
-    // Update VGA buffer to high address
-    out.update_buffer_address(0xb8000 + paging::KERNEL_OFFSET);
 
     // Initialize GDT, TSS + IST (once, at high addresses)
     gdt.init();
@@ -330,6 +337,12 @@ extern "C" void kernel_main_high() {
 
     out << "Syscall test complete!" << out.endl;
 
+    // out << "Test heap memory allocation" << out.endl;
+    // out << "Heap addr " << memory::kernel_heap << out.endl;
+    // int * ptr = (int*) memory::kernel_heap->allocate(sizeof(int), 0);
+    // out << "  ptr: " << ptr << out.endl;
+
+
     out << "We are still alive!" << out.endl;
 
     // Infinite loop
@@ -339,7 +352,7 @@ extern "C" void kernel_main_high() {
 }
 
 void allocation_test(memory::FrameAllocator &allocator) {
-    using vga::out;
+    auto& out = vga::out();
     out << "Allocating all available frames..." << out.endl;
 
     uint64_t count = 0;

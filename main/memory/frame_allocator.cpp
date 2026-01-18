@@ -114,7 +114,7 @@ namespace memory {
             }
         }
 
-        using vga::out;
+        auto& out = vga::out();
         out << "Kernel Start: " << hex << kernel_start << out.endl;
         out << "Kernel End: " << hex << kernel_end << out.endl;
         out << "Kernel Size: " << size << kernel_end << out.endl;

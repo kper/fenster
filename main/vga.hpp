@@ -5,7 +5,9 @@
 
 class VgaOutStream;
 namespace vga {
-    extern VgaOutStream& out;
+    // Function that returns reference to the VGA output stream instance
+    // With PIC (-fPIC), this automatically resolves to the correct address
+    VgaOutStream& out();
 }
 
 enum Color
@@ -68,6 +70,7 @@ public:
     VgaOutStream &operator<<(const int i);
     VgaOutStream &operator<<(const uint32_t i);
     VgaOutStream &operator<<(const uint64_t i);
+    VgaOutStream &operator<<(const void * ptr);
 
     VgaOutStream &operator<<(const Color foreground);
     VgaOutStream &operator<<(const VgaFormat f);
