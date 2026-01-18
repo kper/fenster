@@ -5,14 +5,16 @@
 // User mode test function that runs in ring 3
 void user_function() {
 
-    while (true) {
-    //write_char('A');
-    asm volatile(
-    "mov $1, %rax\n"
-    "mov $65, %rdi\n"
-    "int $0x80\n"
-    );
+    for (int i = 0; i < 10; ++i) {
+        //write_char('A');
+        asm volatile(
+        "mov $1, %rax\n"
+        "mov $65, %rdi\n"
+        "int $0x80\n"
+        );
+    }
 
+    while (true) {
     // Loop forever
         //asm volatile("hlt");
     }
