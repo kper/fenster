@@ -75,13 +75,36 @@ namespace paging {
         // swap the active table and the new table
         active_table.swap(new_table);
 
+        // Now we have double mapping active: low (identity) and high addresses
+        // Jump to high address and adjust stack pointer
+        out << "Jumping to higher-half kernel..." << out.endl;
+
+        // Assembly code to jump to high address
+        // The function we return to will now be at high address because of PIC
+        asm volatile(
+            "mov %0, %%rax\n\t"          // Load KERNEL_OFFSET into rax
+            "add %%rax, %%rsp\n\t"       // Adjust stack pointer to high address
+            "lea 1f(%%rip), %%rbx\n\t"   // Load address of label 1 (RIP-relative, gets low addr)
+            "add %%rax, %%rbx\n\t"       // Add offset to get high address
+            "jmp *%%rbx\n\t"             // Jump to high address
+            "1:\n\t"                     // Continue execution here (at high address now)
+            :
+            : "r"(KERNEL_OFFSET)
+            : "rax", "rbx", "memory"
+        );
+
+        out << "Now running at higher-half addresses! Proof: " << hex << (uint64_t) &remap_the_kernel << out.endl;
+
+        // TODO: Rebuild GDT/IDT here (step 4)
+
+        // TODO: Unmap low identity mapping (step 5)
         // because of swap, the new_table is now actually the old table
-        auto old_table = new_table;
+        // auto old_table = new_table;
         // we reuse the old p4_frame (which is below the stack bottom)
         // as a guard page that is unmapped and would cause a page fault
         // instead of silently corrupting the .bss data
-        auto old_p4_page = Page::containing_address(old_table.p4_frame.start_address());
-        active_table.unmap(old_p4_page, allocator);
+        // auto old_p4_page = Page::containing_address(old_table.p4_frame.start_address());
+        // active_table.unmap(old_p4_page, allocator);
     }
 
 
