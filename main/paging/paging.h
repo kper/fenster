@@ -25,6 +25,11 @@ namespace paging {
     // Import PAGE_SIZE from memory namespace
     using memory::PAGE_SIZE;
 
+    // Higher-half kernel mapping constants
+    // P4[510] maps to 0xFFFF800000000000 - 0xFFFF807FFFFFFFFF (512 GB)
+    constexpr uint64_t KERNEL_OFFSET = 0xFFFF800000000000ULL;
+    constexpr uint16_t KERNEL_P4_INDEX = 510;
+
     void remap_the_kernel(memory::FrameAllocator& allocator, BootInfo& boot_info);
 
     /**

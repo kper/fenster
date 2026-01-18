@@ -25,27 +25,29 @@ namespace paging {
 
 
         active_table.with(new_table, temp_page, [&boot_info, &allocator](ActivePageTable& map) {
-            // identiy map kernel elf
+            // Map kernel ELF sections at BOTH identity (low) and higher-half (high) addresses
             auto elf = boot_info.get_elf_sections().expect("Elf sections required");
             for (auto section = elf->sections_begin(); section != elf->sections_end(); ++section) {
                 if (!section->is_allocated()) {
                     continue;
                 }
-                // out << "checking section " << elf->get_section_name(section) << " at addr: " << hex << section->addr << ", size: " << size << section->size << out.endl;
                 ASSERT(section->addr % PAGE_SIZE == 0, "Elf sections must be page alined");
                 out << "mapping section " << elf->get_section_name(section) << " at addr: " << hex << section->addr << ", size: " << size << section->size << out.endl;
                 auto flags = PageFlags::from_elf_section(*section);
-                // auto flags = PageFlags();
 
                 auto start_frame = memory::Frame::containing_address(section->addr);
                 auto end_frame = memory::Frame::containing_address(section->addr + section->size - 1);
                 for (uint64_t i = start_frame.number; i <= end_frame.number; ++i) {
                     auto frame = memory::Frame(i);
+                    // Identity map (low address)
                     map.identity_map(frame, flags, allocator);
+                    // Also map to higher-half (high address)
+                    auto high_page = Page::containing_address(frame.start_address() + KERNEL_OFFSET);
+                    map.map_to(high_page, frame, flags, allocator);
                 }
             }
 
-            // identity map multiboot information
+            // Map multiboot information at both low and high addresses
             auto multiboot_start = reinterpret_cast<uint64_t>(&boot_info);
             auto multiboot_end   = multiboot_start + boot_info.get_total_size();
             auto start_frame = memory::Frame::containing_address(multiboot_start);
@@ -56,12 +58,18 @@ namespace paging {
                     // already mapped as part of kernel
                     continue;
                 }
+                // Identity map
                 map.identity_map(frame, PageFlags {}, allocator);
+                // Also map to higher-half
+                auto high_page = Page::containing_address(frame.start_address() + KERNEL_OFFSET);
+                map.map_to(high_page, frame, PageFlags {}, allocator);
             }
 
-            // identity maps the VGA text buffer
-            auto vga_buffer_frame = memory::Frame::containing_address(0xb8000); // new
-            map.identity_map(vga_buffer_frame, PageFlags {.writable = true}, allocator); // new
+            // Map VGA text buffer at both low and high addresses
+            auto vga_buffer_frame = memory::Frame::containing_address(0xb8000);
+            map.identity_map(vga_buffer_frame, PageFlags {.writable = true}, allocator);
+            auto high_vga_page = Page::containing_address(0xb8000 + KERNEL_OFFSET);
+            map.map_to(high_vga_page, vga_buffer_frame, PageFlags {.writable = true}, allocator);
         });
 
         // swap the active table and the new table
