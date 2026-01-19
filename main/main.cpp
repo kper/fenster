@@ -15,6 +15,7 @@
 #include "paging/paging.h"
 #include "x86/regs.h"
 #include "usermode.h"
+#include "serial.h"
 
 static GDT gdt = GDT();
 static IDT idt = IDT();
@@ -26,62 +27,63 @@ static const Multiboot2TagFramebuffer* g_framebuffer = nullptr;
 // Prepare exception handlers
 
 void print_stack_frame(InterruptStackFrame *frame) {
-    auto& out = vga::out();
-    VgaFormat orig = out.format;
-
-    out << YELLOW;
-    out << "ExceptionStackFrame {" << out.endl;
-
-    out << "  " << "instruction_pointer: " << hex << frame->rip << out.endl;
-    out << "  " << "code_segment: " << frame->cs << out.endl;
-    out << "  " << "cpu_flags: " << frame->rflags << out.endl;
-    out << "  " << "stack_pointer: " << hex << frame->rsp << out.endl;
-    out << "  " << "stack_segment: " << frame->ss << out.endl;
-    out << "  " << "page_fault_linear_addres: " << hex << cr2::get_pfla() << out.endl;
-    out << "}" << out.endl;
-    out << orig;
+    serial::write_string("ExceptionStackFrame {\n");
+    serial::write_string("  instruction_pointer: ");
+    serial::write_hex(frame->rip);
+    serial::write_char('\n');
+    serial::write_string("  code_segment: ");
+    serial::write_hex(frame->cs);
+    serial::write_char('\n');
+    serial::write_string("  cpu_flags: ");
+    serial::write_hex(frame->rflags);
+    serial::write_char('\n');
+    serial::write_string("  stack_pointer: ");
+    serial::write_hex(frame->rsp);
+    serial::write_char('\n');
+    serial::write_string("  stack_segment: ");
+    serial::write_hex(frame->ss);
+    serial::write_char('\n');
+    serial::write_string("  page_fault_linear_address: ");
+    serial::write_hex(cr2::get_pfla());
+    serial::write_char('\n');
+    serial::write_string("}\n");
 }
 
 __attribute__((interrupt)) void de_handler(InterruptStackFrame *frame)
 {
-    auto& out = vga::out();
-    VgaFormat before = out.format;
-    out << YELLOW << "Exception: Division by zero" << before << out.endl;
+    SERIAL_ERROR("Exception: Division by zero");
     print_stack_frame(frame);
     asm volatile("hlt");
 }
 
 __attribute__((interrupt)) void ud_handler(InterruptStackFrame *frame)
 {
-    auto& out = vga::out();
-    VgaFormat before = out.format;
-    out << YELLOW << "Exception: Invalid opcode" << before << out.endl;
+    SERIAL_ERROR("Exception: Invalid opcode");
     print_stack_frame(frame);
     asm volatile("hlt");
 }
 
 __attribute__((interrupt)) void df_handler(InterruptStackFrame *frame, uint64_t code)
 {
-    auto& out = vga::out();
-    VgaFormat before = out.format;
-    out << YELLOW << "Exception: Double Fault [code: "<< code << "]" << before << out.endl;
+    serial::write_string("[ERROR] Exception: Double Fault [code: ");
+    serial::write_dec(code);
+    serial::write_string("]\n");
     print_stack_frame(frame);
     asm volatile("hlt");
 }
 
 __attribute__((interrupt)) void pf_handler(InterruptStackFrame *frame, uint64_t code)
 {
-    auto& out = vga::out();
-    VgaFormat before = out.format;
-    out << YELLOW << "Exception: Page Fault (error code: " << code << ")" << before << out.endl;
+    serial::write_string("[ERROR] Exception: Page Fault (error code: ");
+    serial::write_dec(code);
+    serial::write_string(")\n");
     print_stack_frame(frame);
     asm volatile("hlt");
 }
 
 __attribute__((interrupt)) void timer_handler(InterruptStackFrame *frame)
 {
-    auto& out = vga::out();
-    out << ".";
+    serial::write_char('.');
 
     pics.notify_end_of_interrupt(Interrupt::TIMER);
 }
@@ -101,32 +103,28 @@ __attribute__((interrupt)) void keyboard_handler(InterruptStackFrame *frame)
 // The actual syscall handler implementation
 extern "C" uint64_t syscall_handler_inner(uint64_t syscall_number, uint64_t syscall_arg)
 {
-    auto& out = vga::out();
-    VgaFormat before = out.format;
-    // out << CYAN << "[SYSCALL ] num: " << syscall_number << " arg: " << syscall_arg << before << out.endl;
     switch (syscall_number) {
         case Syscall::NOOP: {
-            out << CYAN << "[SYSCALL NOOP] Test triggered!" << before << out.endl;
+            SERIAL_INFO("[SYSCALL NOOP] Test triggered!");
             return 0;
         }
         case Syscall::WRITE_CHAR: {
-            out << static_cast<char>(syscall_arg);
+            serial::write_char(static_cast<char>(syscall_arg));
             return 0;  // Success
         }
         case Syscall::READ_CHAR: {
             // FIXME: This is bad
             while (!keyboard::hasChar()) {
-                //out<<".";
+                // Wait for input
             }
             char c = keyboard::getChar();
-            //out << c;
             return static_cast<uint64_t>(c);  // Return the character read
         }
         case Syscall::CAN_READ_CHAR: {
             return keyboard::hasChar();
         }
         case Syscall::WRITE: {
-            out << reinterpret_cast<char *>(syscall_arg);
+            serial::write_string(reinterpret_cast<char *>(syscall_arg));
             return 0;  // Success
         }
         case Syscall::MALLOC: {
@@ -137,11 +135,13 @@ extern "C" uint64_t syscall_handler_inner(uint64_t syscall_number, uint64_t sysc
             return 0;
         }
         case Syscall::EXIT: {
-            out << CYAN << "[SYSCALL EXIT] TODO" << before << out.endl;
+            SERIAL_INFO("[SYSCALL EXIT] TODO");
             return 0;
         }
         default: {
-            out << CYAN << "[SYSCALL UNKNOWN] System " << syscall_number << before << out.endl;
+            serial::write_string("[SYSCALL UNKNOWN] System call ");
+            serial::write_dec(syscall_number);
+            serial::write_char('\n');
             return static_cast<uint64_t>(-1);  // Error
         }
     }
@@ -201,22 +201,22 @@ __attribute__((naked)) void syscall_handler()
 
 extern "C" void kernel_main(void *mb_info_addr)
 {
-    auto& out = vga::out();
-    out.clear();
-    out << GREEN << "Kernel starting..." << WHITE << out.endl;
+    // Initialize serial port for debugging (do this first!)
+    serial::init();
+    SERIAL_INFO("===== Kernel starting =====");
 
     BootInfo* boot_info = static_cast<BootInfo *>(mb_info_addr);
 
     // Print kernel memory layout from ELF sections
-    out << out.endl;
-    boot_info->print(out);
-    out << out.endl;
+    SERIAL_INFO("Boot information:");
+    // Note: boot_info->print() writes to VGA, we'd need to refactor it to use serial
+    // For now, just skip it
 
     // Store framebuffer info for later use
     auto fb = boot_info->get_framebuffer();
     if (fb.has_value()) {
         g_framebuffer = fb.value();
-        out << GREEN << "Framebuffer available - will test after memory setup" << WHITE << out.endl;
+        SERIAL_INFO("Framebuffer available - will test after memory setup");
     }
 
     // Remap kernel and jump to high addresses
@@ -228,26 +228,26 @@ extern "C" void kernel_main(void *mb_info_addr)
 
 // This function runs entirely at high addresses
 extern "C" void kernel_main_high() {
-    auto& out = vga::out();
-
-    // Update VGA buffer to high address
-    out.update_buffer_address(0xb8000 + paging::KERNEL_OFFSET);
-
-    out << GREEN << "Now running at high addresses! Proof: " << hex << (uint64_t) &kernel_main_high << WHITE << out.endl;
+    SERIAL_INFO("Now running at high addresses!");
+    serial::write_string("Kernel address: ");
+    serial::write_hex((uint64_t) &kernel_main_high);
+    serial::write_char('\n');
 
     // Initialize heap BEFORE unmapping lower half
     // This is necessary because placement new for BlockAllocator needs access to constructor code
+    SERIAL_INFO("Initializing heap...");
     memory::init_heap();
 
     // Now it's safe to unmap the lower half
     paging::unmap_lower_half();
-
-    out << "Lower half unmapped successfully!" << out.endl;
+    SERIAL_INFO("Lower half unmapped successfully!");
 
     // Initialize GDT, TSS + IST (once, at high addresses)
+    SERIAL_INFO("Initializing GDT...");
     gdt.init();
 
     // Set up the IDT with all handlers
+    SERIAL_INFO("Setting up IDT...");
     idt.set_idt_entry(0, de_handler);
     idt.set_idt_entry(6, ud_handler);
     idt.set_idt_entry_err(14, pf_handler);
@@ -256,6 +256,7 @@ extern "C" void kernel_main_high() {
     idt.load();
 
     // Init PIC & register interrupts handlers
+    SERIAL_INFO("Initializing PIC...");
     pics.init(PIC_1_OFFSET, PIC_2_OFFSET);
     idt.set_idt_entry(Interrupt::TIMER, timer_handler);
     idt.set_idt_entry(Interrupt::KEYBOARD, keyboard_handler);
@@ -268,49 +269,61 @@ extern "C" void kernel_main_high() {
 
     interrupts_enable();
 
-    out << GREEN << "Kernel setup complete" << WHITE << out.endl;
+    SERIAL_INFO("Kernel setup complete");
 
     // Test syscall from kernel space
-    out << "Testing syscall mechanism..." << out.endl;
+    SERIAL_INFO("Testing syscall mechanism...");
     write_char('O');
     write_char('K');
     write_char('\n');
+    SERIAL_INFO("Syscall test complete!");
 
-    out << "Syscall test complete!" << out.endl;
-
-    out << "Testing heap memory allocation..." << out.endl;
+    SERIAL_INFO("Testing heap memory allocation...");
     int * ptr = (int*) memory::kernel_heap->allocate(sizeof(int), 0);
-    out << "  ptr: " << ptr << out.endl;
+    serial::write_string("  ptr: ");
+    serial::write_hex((uint64_t)ptr);
+    serial::write_char('\n');
     *ptr = 123;
     memory::kernel_heap->deallocate(ptr, sizeof(int));
-    out << "  value: " << *ptr << out.endl;
-    out << "Heap memory allocation test complete!" << out.endl;
+    serial::write_string("  value: ");
+    serial::write_dec(*ptr);
+    serial::write_char('\n');
+    SERIAL_INFO("Heap memory allocation test complete!");
 
-
-    VGA_DBG("We are still alive!")
+    SERIAL_INFO("We are still alive!");
 
     // Test framebuffer if available
     if (g_framebuffer != nullptr) {
-        out << GREEN << "Testing framebuffer..." << WHITE << out.endl;
+        SERIAL_INFO("Testing framebuffer...");
 
         uint64_t fb_addr = g_framebuffer->framebuffer_addr;
         uint32_t width = g_framebuffer->framebuffer_width;
         uint32_t height = g_framebuffer->framebuffer_height;
         uint64_t fb_size = width * height * 4;  // 4 bytes per pixel (32bpp)
 
-        out << "Mapping framebuffer at 0x" << hex << fb_addr << " size: " << size << fb_size << out.endl;
+        serial::write_string("Framebuffer address: ");
+        serial::write_hex(fb_addr);
+        serial::write_string(", size: ");
+        serial::write_dec(fb_size);
+        serial::write_string(" bytes\n");
 
         // Map framebuffer pages (identity map for simplicity)
         auto page_table = paging::ActivePageTable::instance();
         uint64_t fb_start = fb_addr & ~0xFFF;  // Align down to page boundary
         uint64_t fb_end = (fb_addr + fb_size + 0xFFF) & ~0xFFF;  // Align up
 
+        serial::write_string("Mapping pages from ");
+        serial::write_hex(fb_start);
+        serial::write_string(" to ");
+        serial::write_hex(fb_end);
+        serial::write_char('\n');
+
         for (uint64_t addr = fb_start; addr < fb_end; addr += 0x1000) {
             auto frame = memory::Frame::containing_address(addr);
             page_table.identity_map(frame, paging::PageFlags{.writable = true}, *memory::frame_allocator);
         }
 
-        out << "Framebuffer mapped! Drawing test pattern..." << out.endl;
+        SERIAL_INFO("Framebuffer mapped! Drawing test pattern...");
 
         // Now we can safely write to framebuffer
         uint32_t* framebuffer = g_framebuffer->get_buffer();
@@ -327,12 +340,13 @@ extern "C" void kernel_main_high() {
             }
         }
 
-        out << GREEN << "Framebuffer test complete! Screen should be red/blue." << WHITE << out.endl;
+        SERIAL_INFO("Framebuffer test complete! Screen should be red/blue.");
+    } else {
+        SERIAL_WARN("No framebuffer available");
     }
 
     // Jump to ring 3 usermode
-    //extern void user_function();
-    out << "Jumping to ring 3... (And scream there)" << out.endl;
+    SERIAL_INFO("Jumping to ring 3...");
     gdt.jump_to_ring3(user_function);
 
     // Infinite loop
@@ -342,8 +356,7 @@ extern "C" void kernel_main_high() {
 }
 
 void allocation_test(memory::AreaFrameAllocator &allocator) {
-    auto& out = vga::out();
-    out << "Allocating all available frames..." << out.endl;
+    SERIAL_INFO("Allocating all available frames...");
 
     uint64_t count = 0;
     memory::Frame last_frame;
@@ -360,11 +373,21 @@ void allocation_test(memory::AreaFrameAllocator &allocator) {
 
         // Print progress every 1024 frames to avoid too much output
         if (count % 1024 == 0) {
-            out << "  Allocated " << count << " frames..." << out.endl;
+            serial::write_string("  Allocated ");
+            serial::write_dec(count);
+            serial::write_string(" frames...\n");
         }
     }
 
-    out << "Total frames allocated: " << count << out.endl;
-    out << "Last frame: #" << last_frame.number << " (" << hex << last_frame.start_address() << ")" << out.endl;
-    out << "Total memory allocated: " << size << count * memory::PAGE_SIZE << out.endl;
+    serial::write_string("Total frames allocated: ");
+    serial::write_dec(count);
+    serial::write_char('\n');
+    serial::write_string("Last frame: #");
+    serial::write_dec(last_frame.number);
+    serial::write_string(" (");
+    serial::write_hex(last_frame.start_address());
+    serial::write_string(")\n");
+    serial::write_string("Total memory allocated: ");
+    serial::write_dec(count * memory::PAGE_SIZE);
+    serial::write_string(" bytes\n");
 }

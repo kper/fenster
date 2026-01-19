@@ -42,6 +42,7 @@ SOURCES_CPP := \
     gdt.cpp \
     idt.cpp \
     bootinfo.cpp \
+    serial.cpp \
     paging/Entry.cpp \
     paging/Table.cpp \
     paging/paging.cpp \
@@ -91,12 +92,14 @@ mkiso: kernel
 boot: clean kernel mkiso
 	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso \
 		-no-reboot -no-shutdown \
-		-d int,guest_errors,cpu_reset
+		-d int,guest_errors,cpu_reset \
+		-serial stdio
 
 debug: clean kernel mkiso
 	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso \
 		-no-reboot -no-shutdown \
 		-d int,guest_errors,cpu_reset \
+		-serial stdio \
 		-S -s
 
 # Clean build artifacts
