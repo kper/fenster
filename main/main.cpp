@@ -85,9 +85,9 @@ __attribute__((interrupt)) void timer_handler(InterruptStackFrame *frame)
 __attribute__((interrupt)) void keyboard_handler(InterruptStackFrame *frame)
 {
     uint8_t scancode = inb(0x60);
-    auto& out = vga::out();
-    VgaFormat before = out.format;
-    out << CYAN << "code: " << scancode << before << out.endl;
+    // auto& out = vga::out();
+    // VgaFormat before = out.format;
+    // out << CYAN << "code: " << scancode << before << out.endl;
     keyboard::addScancode(scancode);
     pics.notify_end_of_interrupt(Interrupt::KEYBOARD);
 }
