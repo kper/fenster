@@ -233,6 +233,16 @@ extern "C" void kernel_main_high() {
     serial::write_hex((uint64_t) &kernel_main_high);
     serial::write_char('\n');
 
+    // Update framebuffer pointer to high address (like we do for VGA)
+    if (g_framebuffer != nullptr) {
+        g_framebuffer = reinterpret_cast<const Multiboot2TagFramebuffer*>(
+            reinterpret_cast<uint64_t>(g_framebuffer) + paging::KERNEL_OFFSET
+        );
+        serial::write_string("Updated framebuffer pointer to: ");
+        serial::write_hex((uint64_t)g_framebuffer);
+        serial::write_char('\n');
+    }
+
     // Initialize heap BEFORE unmapping lower half
     // This is necessary because placement new for BlockAllocator needs access to constructor code
     SERIAL_INFO("Initializing heap...");
