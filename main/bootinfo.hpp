@@ -134,6 +134,35 @@ struct Multiboot2TagElfSections : public Multiboot2Tag {
     }
 } __attribute__((packed));
 
+struct Multiboot2TagFramebuffer : public Multiboot2Tag {
+    uint64_t framebuffer_addr;
+    uint32_t framebuffer_pitch;
+    uint32_t framebuffer_width;
+    uint32_t framebuffer_height;
+    uint8_t  framebuffer_bpp;
+    uint8_t  framebuffer_type;
+    uint8_t  reserved;
+
+    enum Type : uint8_t {
+        INDEXED = 0,
+        RGB = 1,
+        EGA_TEXT = 2
+    };
+
+    // For RGB mode (type == 1)
+    struct {
+        uint8_t red_field_position;
+        uint8_t red_mask_size;
+        uint8_t green_field_position;
+        uint8_t green_mask_size;
+        uint8_t blue_field_position;
+        uint8_t blue_mask_size;
+    } color_info;
+
+    bool is_rgb() const { return framebuffer_type == RGB; }
+    uint32_t* get_buffer() const { return reinterpret_cast<uint32_t*>(framebuffer_addr); }
+} __attribute__((packed));
+
 /**
  * Multiboot2 information structure
  * EBX points to this structure
@@ -158,6 +187,7 @@ public:
     bool has_memory_info() const;
     bool has_memory_map() const;
     bool has_elf_sections() const;
+    bool has_framebuffer() const;
 
     const char* get_cmdline() const;
     const char* get_boot_loader_name() const;
@@ -167,6 +197,7 @@ public:
     const Multiboot2TagMmap* get_memory_map() const;
 
     rnt::Optional<const Multiboot2TagElfSections *> get_elf_sections() const;
+    rnt::Optional<const Multiboot2TagFramebuffer *> get_framebuffer() const;
 
     void print(VgaOutStream& stream) const;
 

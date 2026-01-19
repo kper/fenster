@@ -11,7 +11,19 @@ header_start:
 
     # insert optional multiboot tags here
 
+    # framebuffer tag
+    .align 8
+framebuffer_tag_start:
+    .word 5                  # type = framebuffer
+    .word 0                  # flags
+    .long framebuffer_tag_end - framebuffer_tag_start  # size
+    .long 1024               # width
+    .long 768                # height
+    .long 32                 # depth (bits per pixel)
+framebuffer_tag_end:
+
     # required end tag
+    .align 8
     .word 0                  # type
     .word 0                  # flags
     .long 8                  # size

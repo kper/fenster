@@ -60,6 +60,10 @@ bool BootInfo::has_elf_sections() const {
     return find_tag(Multiboot2Tag::ELF_SECTIONS) != nullptr;
 }
 
+bool BootInfo::has_framebuffer() const {
+    return find_tag(Multiboot2Tag::FRAMEBUFFER) != nullptr;
+}
+
 const char* BootInfo::get_cmdline() const {
     auto tag = static_cast<const Multiboot2TagString*>(find_tag(Multiboot2Tag::CMDLINE));
     return tag ? tag->get_string() : nullptr;
@@ -97,6 +101,13 @@ rnt::Optional<const Multiboot2TagElfSections *> BootInfo::get_elf_sections() con
     return static_cast<const Multiboot2TagElfSections*>(find_tag(Multiboot2Tag::ELF_SECTIONS));
 }
 
+rnt::Optional<const Multiboot2TagFramebuffer *> BootInfo::get_framebuffer() const {
+    if (!has_framebuffer()) {
+        return rnt::Optional<const Multiboot2TagFramebuffer *>();
+    }
+    return static_cast<const Multiboot2TagFramebuffer*>(find_tag(Multiboot2Tag::FRAMEBUFFER));
+}
+
 void BootInfo::print(VgaOutStream& stream) const {
     stream << "=== Boot Information ===" << VgaOutStream::endl;
     stream << "Total size: " << total_size << " bytes" << VgaOutStream::endl;
@@ -122,6 +133,33 @@ void BootInfo::print(VgaOutStream& stream) const {
         stream << "Total Memory: ";
         print_size(stream, get_total_memory());
         stream << VgaOutStream::endl;
+    }
+
+    stream << VgaOutStream::endl;
+
+    // Framebuffer info
+    if (has_framebuffer()) {
+        auto fb = get_framebuffer();
+        if (fb.has_value()) {
+            auto fb_tag = fb.value();
+            stream << "Framebuffer:" << VgaOutStream::endl;
+            stream << "  Address: 0x" << fb_tag->framebuffer_addr << VgaOutStream::endl;
+            stream << "  Resolution: " << fb_tag->framebuffer_width << "x"
+                   << fb_tag->framebuffer_height << VgaOutStream::endl;
+            stream << "  BPP: " << (uint32_t)fb_tag->framebuffer_bpp << VgaOutStream::endl;
+            stream << "  Pitch: " << fb_tag->framebuffer_pitch << VgaOutStream::endl;
+            stream << "  Type: ";
+            if (fb_tag->framebuffer_type == Multiboot2TagFramebuffer::RGB) {
+                stream << "RGB";
+            } else if (fb_tag->framebuffer_type == Multiboot2TagFramebuffer::INDEXED) {
+                stream << "Indexed";
+            } else if (fb_tag->framebuffer_type == Multiboot2TagFramebuffer::EGA_TEXT) {
+                stream << "EGA Text";
+            } else {
+                stream << "Unknown";
+            }
+            stream << VgaOutStream::endl;
+        }
     }
 
     stream << VgaOutStream::endl;
