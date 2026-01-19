@@ -13,6 +13,9 @@ enum Syscall {
     MALLOC = 4,
     FREE = 5,
     CAN_READ_CHAR = 6,
+    DRAW = 7,
+    GET_SCREEN_WIDTH = 8,
+    GET_SCREEN_HEIGHT = 9,
     EXIT = 60,
 };
 
@@ -37,6 +40,10 @@ void write(char *c);
 void* malloc(uint64_t);
 
 void free(uint64_t);
+
+void draw(uint32_t* buffer);
+
+void get_screen_size(uint32_t* width, uint32_t* height);
 
 void exit(int code);
 

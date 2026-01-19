@@ -39,6 +39,15 @@ void free(void *ptr) {
     raw_syscall(FREE, (uint64_t)ptr);
 }
 
+void draw(uint32_t* buffer) {
+    raw_syscall(DRAW, (uint64_t)buffer);
+}
+
+void get_screen_size(uint32_t* width, uint32_t* height) {
+    *width = (uint64_t)raw_syscall(GET_SCREEN_WIDTH, 0);
+    *height = (uint64_t)raw_syscall(GET_SCREEN_HEIGHT, 0);
+}
+
 void exit(int code) {
     raw_syscall(EXIT, code);
 }

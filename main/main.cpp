@@ -103,6 +103,14 @@ __attribute__((interrupt)) void keyboard_handler(InterruptStackFrame *frame)
 // The actual syscall handler implementation
 extern "C" uint64_t syscall_handler_inner(uint64_t syscall_number, uint64_t syscall_arg)
 {
+    if (syscall_number != 6) {
+        serial::write_string("SYCALL TRIGGERD ");
+        serial::write_string("syscall_number: ");
+        serial::write_dec(syscall_number);
+        serial::write_string(" syscall_arg: ");
+        serial::write_dec(syscall_arg);
+        serial::write_char('\n');
+    }
     switch (syscall_number) {
         case Syscall::NOOP: {
             SERIAL_INFO("[SYSCALL NOOP] Test triggered!");
@@ -133,6 +141,24 @@ extern "C" uint64_t syscall_handler_inner(uint64_t syscall_number, uint64_t sysc
         case Syscall::FREE: {
             process::activeProcess->heap->deallocate((void*)syscall_arg, 0);
             return 0;
+        }
+        case Syscall::DRAW: {
+            uint32_t width = g_framebuffer->framebuffer_width;
+            uint32_t height = g_framebuffer->framebuffer_height;
+            uint32_t* framebuffer = g_framebuffer->get_buffer();
+            for (uint32_t y = 0; y < height; y++) {
+                for (uint32_t x = 0; x < width; x++) {
+                    uint32_t pixel_index = y * width + x;
+                    framebuffer[pixel_index] = ((uint32_t*)syscall_arg)[pixel_index];
+                }
+            }
+            return 0;
+        }
+        case Syscall::GET_SCREEN_WIDTH: {
+            return g_framebuffer->framebuffer_width;
+        }
+        case Syscall::GET_SCREEN_HEIGHT: {
+            return g_framebuffer->framebuffer_height;
         }
         case Syscall::EXIT: {
             SERIAL_INFO("[SYSCALL EXIT] TODO");
@@ -338,18 +364,12 @@ extern "C" void kernel_main_high() {
         // Now we can safely write to framebuffer
         uint32_t* framebuffer = g_framebuffer->get_buffer();
 
-        // Fill top half with red, bottom half with blue
-        for (uint32_t y = 0; y < height; y++) {
-            for (uint32_t x = 0; x < width; x++) {
-                uint32_t pixel_index = y * width + x;
-                if (y < height / 2) {
-                    framebuffer[pixel_index] = 0x00FF0000;  // Red
-                } else {
-                    framebuffer[pixel_index] = 0x000000FF;  // Blue
-                }
-            }
-        }
-
+        // for (uint32_t y = 0; y < height; y++) {
+        //     for (uint32_t x = 0; x < width; x++) {
+        //         uint32_t pixel_index = y * width + x;
+        //         framebuffer[pixel_index] = image_data[y][x];
+        //     }
+        // }
         SERIAL_INFO("Framebuffer test complete! Screen should be red/blue.");
     } else {
         SERIAL_WARN("No framebuffer available");

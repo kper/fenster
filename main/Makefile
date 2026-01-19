@@ -92,7 +92,6 @@ mkiso: kernel
 boot: clean kernel mkiso
 	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso \
 		-no-reboot -no-shutdown \
-		-d int,guest_errors,cpu_reset \
 		-serial stdio
 
 debug: clean kernel mkiso
