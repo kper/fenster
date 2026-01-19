@@ -8,6 +8,7 @@
 #include "idt.hpp"
 #include "bootinfo.hpp"
 #include "keyboard.h"
+#include "Process.h"
 #include "syscall.h"
 #include "memory/memory.h"
 #include "memory/virtual/BlockAllocator.h"
@@ -125,11 +126,13 @@ extern "C" uint64_t syscall_handler_inner(uint64_t syscall_number, uint64_t sysc
             out << reinterpret_cast<char *>(syscall_arg);
             return 0;  // Success
         }
-        // case Syscall::MALLOC {
-        //
-        // }
-        // case Syscall::FREE {
-        // }
+        case Syscall::MALLOC: {
+            return (uint64_t)process::activeProcess->heap->allocate(syscall_arg, 0);
+        }
+        case Syscall::FREE: {
+            process::activeProcess->heap->deallocate((void*)syscall_arg, 0);
+            return 0;
+        }
         case Syscall::EXIT: {
             out << CYAN << "[SYSCALL EXIT] TODO" << before << out.endl;
             return 0;
