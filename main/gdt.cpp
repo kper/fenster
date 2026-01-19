@@ -1,6 +1,8 @@
 #include "gdt.hpp"
 
 #include "vga.hpp"
+#include "paging/paging.h"
+#include "memory/memory.h"
 
 void GDT::init()
 {
@@ -83,9 +85,63 @@ void GDT::init()
 
 void GDT::jump_to_ring3(void (*user_function)())
 {
-    // Allocate user stack (static for simplicity)
-    static uint8_t user_stack[8192];
-    uint64_t user_stack_top = reinterpret_cast<uint64_t>(&user_stack[0]) + sizeof(user_stack);
+    auto out = vga::out();
+
+    // Allocate user stack in user space
+    uint64_t USER_STACK_TOP = 0xC0000000;
+    uint64_t USER_STACK_SIZE = 2 * 1024 * 1024;  // 2MB stack
+
+    auto top_page = paging::Page::containing_address(USER_STACK_TOP - USER_STACK_SIZE);
+    auto bottom_page = paging::Page::containing_address(USER_STACK_TOP);
+    auto page_table = paging::ActivePageTable::instance();
+
+    out << "User function addr: " << (void *)user_function << out.endl;
+
+    // Map user stack with user_accessible flag
+    for (auto i = bottom_page.number; i > top_page.number; i--) {
+        page_table.map(paging::Page(i), paging::PageFlags{.writable = true, .user_accessible = true}, *memory::frame_allocator);
+    }
+
+    // Map the user function code page as user-accessible
+    // Note: This maps kernel code to be user-accessible, which is a security risk
+    // In a real OS, you'd copy the code to user space instead
+    auto user_func_addr = reinterpret_cast<uint64_t>(user_function);
+    auto user_func_page = paging::Page::containing_address(user_func_addr);
+
+    out << "Mapping user function page: " << (void*)user_func_page.start_addr() << out.endl;
+
+    // We need to set the user-accessible flag on all levels of the page table hierarchy
+    // for the user function's page. We do this by walking the page table via recursive mapping.
+    auto p4 = reinterpret_cast<paging::P4Table*>(paging::RECURSIVE_P4_ADDR);
+    uint16_t p4_index = (user_func_addr >> 39) & 0x1FF;
+    uint16_t p3_index = (user_func_addr >> 30) & 0x1FF;
+    uint16_t p2_index = (user_func_addr >> 21) & 0x1FF;
+    uint16_t p1_index = (user_func_addr >> 12) & 0x1FF;
+
+    // Set user-accessible on P4 entry
+    (*p4)[p4_index].set_user_accessible(true);
+
+    // Get P3 table and set user-accessible
+    auto p3 = p4->get_next_table(p4_index);
+    if (p3) {
+        (*p3)[p3_index].set_user_accessible(true);
+
+        // Get P2 table and set user-accessible
+        auto p2 = p3->get_next_table(p3_index);
+        if (p2) {
+            (*p2)[p2_index].set_user_accessible(true);
+
+            // Get P1 table and set user-accessible
+            auto p1 = p2->get_next_table(p2_index);
+            if (p1) {
+                (*p1)[p1_index].set_user_accessible(true);
+                out << "Set user-accessible flag on user function page" << out.endl;
+            }
+        }
+    }
+
+    // Flush TLB for the modified page
+    asm volatile("invlpg (%0)" :: "r"(user_func_addr) : "memory");
 
     // Get current RFLAGS and set interrupt flag
     uint64_t rflags;
@@ -103,7 +159,7 @@ void GDT::jump_to_ring3(void (*user_function)())
         "iretq\n"                // Return to ring 3
         :
         : [ss] "r"((uint64_t)USER_DATA_SELECTOR),
-          [rsp] "r"(user_stack_top),
+          [rsp] "r"(USER_STACK_TOP),
           [rflags] "r"(rflags),
           [cs] "r"((uint64_t)USER_CODE_SELECTOR),
           [rip] "r"((uint64_t)user_function)
