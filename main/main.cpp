@@ -136,7 +136,10 @@ extern "C" uint64_t syscall_handler_inner(uint64_t syscall_number, uint64_t sysc
             return 0;  // Success
         }
         case Syscall::MALLOC: {
-            return (uint64_t)process::activeProcess->heap->allocate(syscall_arg, 0);
+            serial::write_string("ALLOC\n");
+            auto tmp =  (uint64_t)process::activeProcess->heap->allocate(syscall_arg, 0);
+            serial::write_string("ALLOC ENDE\n");
+            return tmp;
         }
         case Syscall::FREE: {
             process::activeProcess->heap->deallocate((void*)syscall_arg, 0);
