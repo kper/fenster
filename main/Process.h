@@ -15,6 +15,6 @@ public:
 };
 
 namespace process {
-    Process *activeProcess = nullptr;
+    extern Process *activeProcess;
 } // process
 #endif //MAIN_PROCESS_H

@@ -3,6 +3,7 @@
 #include "vga.hpp"
 #include "paging/paging.h"
 #include "memory/memory.h"
+#include "Process.h"
 
 void GDT::init()
 {
@@ -87,18 +88,32 @@ void GDT::jump_to_ring3(void (*user_function)())
 {
     auto out = vga::out();
 
-    // Allocate user stack in user space
+    // User space memory layout:
+    // 0xB0000000 - 0xB0800000: 8MB heap (grows upward)
+    // 0xBE000000 - 0xC0000000: 2MB stack (grows downward from 0xC0000000)
+
+    uint64_t USER_HEAP_START = 0xB0000000;
+    uint64_t USER_HEAP_SIZE = 8 * 1024 * 1024;   // 8MB heap
     uint64_t USER_STACK_TOP = 0xC0000000;
     uint64_t USER_STACK_SIZE = 2 * 1024 * 1024;  // 2MB stack
 
-    auto top_page = paging::Page::containing_address(USER_STACK_TOP - USER_STACK_SIZE);
-    auto bottom_page = paging::Page::containing_address(USER_STACK_TOP);
     auto page_table = paging::ActivePageTable::instance();
 
     out << "User function addr: " << (void *)user_function << out.endl;
+    out << "Setting up user heap: " << (void*)USER_HEAP_START << " - " << (void*)(USER_HEAP_START + USER_HEAP_SIZE) << out.endl;
+    out << "Setting up user stack: " << (void*)(USER_STACK_TOP - USER_STACK_SIZE) << " - " << (void*)USER_STACK_TOP << out.endl;
 
-    // Map user stack with user_accessible flag
-    for (auto i = bottom_page.number; i > top_page.number; i--) {
+    // Map user heap with user_accessible and writable flags
+    auto heap_start_page = paging::Page::containing_address(USER_HEAP_START);
+    auto heap_end_page = paging::Page::containing_address(USER_HEAP_START + USER_HEAP_SIZE - 1);
+    for (auto i = heap_start_page.number; i <= heap_end_page.number; i++) {
+        page_table.map(paging::Page(i), paging::PageFlags{.writable = true, .user_accessible = true}, *memory::frame_allocator);
+    }
+
+    // Map user stack with user_accessible and writable flags
+    auto stack_top_page = paging::Page::containing_address(USER_STACK_TOP - USER_STACK_SIZE);
+    auto stack_bottom_page = paging::Page::containing_address(USER_STACK_TOP);
+    for (auto i = stack_bottom_page.number; i > stack_top_page.number; i--) {
         page_table.map(paging::Page(i), paging::PageFlags{.writable = true, .user_accessible = true}, *memory::frame_allocator);
     }
 
@@ -142,6 +157,26 @@ void GDT::jump_to_ring3(void (*user_function)())
 
     // Flush TLB for the modified page
     asm volatile("invlpg (%0)" :: "r"(user_func_addr) : "memory");
+
+    // Create and initialize the process with its heap
+    // Allocate Process object from kernel heap
+    auto process = reinterpret_cast<Process*>(memory::kernel_heap->allocate(sizeof(Process), alignof(Process)));
+
+    // Allocate BlockAllocator for the process heap from kernel heap
+    process->heap = reinterpret_cast<memory::BlockAllocator*>(
+        memory::kernel_heap->allocate(sizeof(memory::BlockAllocator), alignof(memory::BlockAllocator))
+    );
+
+    // Placement new to construct the BlockAllocator
+    new (process->heap) memory::BlockAllocator();
+
+    // Initialize the user heap with the memory range we just mapped
+    process->heap->init(USER_HEAP_START, USER_HEAP_SIZE);
+
+    // Set as active process so syscalls can access it
+    process::activeProcess = process;
+
+    out << "Process created with heap at " << (void*)USER_HEAP_START << out.endl;
 
     // Get current RFLAGS and set interrupt flag
     uint64_t rflags;

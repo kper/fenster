@@ -5,4 +5,5 @@
 #include "Process.h"
 
 namespace process {
+    Process *activeProcess = nullptr;
 } // process
