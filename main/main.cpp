@@ -20,6 +20,9 @@ static GDT gdt = GDT();
 static IDT idt = IDT();
 static ChainedPICs pics = ChainedPICs();
 
+// Global framebuffer info (set in kernel_main, used in kernel_main_high)
+static const Multiboot2TagFramebuffer* g_framebuffer = nullptr;
+
 // Prepare exception handlers
 
 void print_stack_frame(InterruptStackFrame *frame) {
@@ -209,6 +212,13 @@ extern "C" void kernel_main(void *mb_info_addr)
     boot_info->print(out);
     out << out.endl;
 
+    // Store framebuffer info for later use
+    auto fb = boot_info->get_framebuffer();
+    if (fb.has_value()) {
+        g_framebuffer = fb.value();
+        out << GREEN << "Framebuffer available - will test after memory setup" << WHITE << out.endl;
+    }
+
     // Remap kernel and jump to high addresses
     // This function does NOT return! It jumps to kernel_main_high()
     memory::init_and_jump_high(*boot_info);
@@ -278,6 +288,47 @@ extern "C" void kernel_main_high() {
 
 
     VGA_DBG("We are still alive!")
+
+    // Test framebuffer if available
+    if (g_framebuffer != nullptr) {
+        out << GREEN << "Testing framebuffer..." << WHITE << out.endl;
+
+        uint64_t fb_addr = g_framebuffer->framebuffer_addr;
+        uint32_t width = g_framebuffer->framebuffer_width;
+        uint32_t height = g_framebuffer->framebuffer_height;
+        uint64_t fb_size = width * height * 4;  // 4 bytes per pixel (32bpp)
+
+        out << "Mapping framebuffer at 0x" << hex << fb_addr << " size: " << size << fb_size << out.endl;
+
+        // Map framebuffer pages (identity map for simplicity)
+        auto page_table = paging::ActivePageTable::instance();
+        uint64_t fb_start = fb_addr & ~0xFFF;  // Align down to page boundary
+        uint64_t fb_end = (fb_addr + fb_size + 0xFFF) & ~0xFFF;  // Align up
+
+        for (uint64_t addr = fb_start; addr < fb_end; addr += 0x1000) {
+            auto frame = memory::Frame::containing_address(addr);
+            page_table.identity_map(frame, paging::PageFlags{.writable = true}, *memory::frame_allocator);
+        }
+
+        out << "Framebuffer mapped! Drawing test pattern..." << out.endl;
+
+        // Now we can safely write to framebuffer
+        uint32_t* framebuffer = g_framebuffer->get_buffer();
+
+        // Fill top half with red, bottom half with blue
+        for (uint32_t y = 0; y < height; y++) {
+            for (uint32_t x = 0; x < width; x++) {
+                uint32_t pixel_index = y * width + x;
+                if (y < height / 2) {
+                    framebuffer[pixel_index] = 0x00FF0000;  // Red
+                } else {
+                    framebuffer[pixel_index] = 0x000000FF;  // Blue
+                }
+            }
+        }
+
+        out << GREEN << "Framebuffer test complete! Screen should be red/blue." << WHITE << out.endl;
+    }
 
     // Jump to ring 3 usermode
     //extern void user_function();
