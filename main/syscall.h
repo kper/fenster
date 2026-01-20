@@ -16,6 +16,11 @@ enum Syscall {
     DRAW = 7,
     GET_SCREEN_WIDTH = 8,
     GET_SCREEN_HEIGHT = 9,
+    FB_PUTCHAR = 10,
+    FB_PUTS = 11,
+    FB_CLEAR = 12,
+    FB_SET_CURSOR = 13,
+    FB_SET_COLORS = 14,
     EXIT = 60,
 };
 
@@ -46,5 +51,12 @@ void draw(uint32_t* buffer);
 void get_screen_size(uint32_t* width, uint32_t* height);
 
 void exit(int code);
+
+// Framebuffer text functions
+void fb_putchar(char c);
+void fb_puts(const char* str);
+void fb_clear();
+void fb_set_cursor(uint32_t x, uint32_t y);
+void fb_set_colors(uint32_t fg, uint32_t bg);
 
 #endif //MAIN_SYSCALL_H

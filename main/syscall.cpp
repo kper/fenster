@@ -51,3 +51,25 @@ void get_screen_size(uint32_t* width, uint32_t* height) {
 void exit(int code) {
     raw_syscall(EXIT, code);
 }
+
+void fb_putchar(char c) {
+    raw_syscall(FB_PUTCHAR, (uint64_t)c);
+}
+
+void fb_puts(const char* str) {
+    raw_syscall(FB_PUTS, (uint64_t)str);
+}
+
+void fb_clear() {
+    raw_syscall(FB_CLEAR, 0);
+}
+
+void fb_set_cursor(uint32_t x, uint32_t y) {
+    uint64_t packed = ((uint64_t)x << 32) | (uint64_t)y;
+    raw_syscall(FB_SET_CURSOR, packed);
+}
+
+void fb_set_colors(uint32_t fg, uint32_t bg) {
+    uint64_t packed = ((uint64_t)fg << 32) | (uint64_t)bg;
+    raw_syscall(FB_SET_COLORS, packed);
+}

@@ -14,7 +14,12 @@ int strcmp(char *s1, char *s2) {
 }
 
 void shell() {
-    write("sh> ");
+    // Clear screen and show prompt
+    fb_clear();
+    fb_set_colors(0x00FF00, 0x000000);  // Green on black
+    fb_puts("Fenster Shell\n");
+    fb_set_colors(0xFFFFFF, 0x000000);  // White on black
+    fb_puts("sh> ");
 
     char *data = (char *) malloc(1024);
     uint64_t size = 0;
@@ -22,23 +27,29 @@ void shell() {
     while (true) {
         while (!can_read_char()) {
         }
-        //write("Can read char: ");
         char c = read_char();
+
+        // Echo character to both serial and framebuffer
         write_char(c);
+        fb_putchar(c);
 
         if (c == '\n') {
             data[size] = '\0';
             size = 0;
 
             if (strcmp(data, "scream") == 0) {
-                write("AHHHHHH!\n");
+                fb_puts("AHHHHHH!\n");
+            } else if (strcmp(data, "clear") == 0) {
+                fb_clear();
+            } else if (strcmp(data, "") == 0) {
+                // Empty command, do nothing
             } else {
-                write("Unknown command: '");
-                write(data);
-                write("'\n");
+                fb_puts("Unknown command: '");
+                fb_puts(data);
+                fb_puts("'\n");
             }
 
-            write("sh> ");
+            fb_puts("sh> ");
         } else if (size < 1024) {
             data[size++] = c;
         }
@@ -87,5 +98,5 @@ void weakpoint() {
 }
 
 void user_function() {
-    weakpoint();
+    shell();
 }

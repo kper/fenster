@@ -16,6 +16,7 @@
 #include "x86/regs.h"
 #include "usermode.h"
 #include "serial.h"
+#include "fb_text.h"
 
 static GDT gdt = GDT();
 static IDT idt = IDT();
@@ -23,6 +24,7 @@ static ChainedPICs pics = ChainedPICs();
 
 // Global framebuffer info (set in kernel_main, used in kernel_main_high)
 static const Multiboot2TagFramebuffer* g_framebuffer = nullptr;
+static FbTextState g_fb_text_state;
 
 // Prepare exception handlers
 
@@ -162,6 +164,30 @@ extern "C" uint64_t syscall_handler_inner(uint64_t syscall_number, uint64_t sysc
         }
         case Syscall::GET_SCREEN_HEIGHT: {
             return g_framebuffer->framebuffer_height;
+        }
+        case Syscall::FB_PUTCHAR: {
+            fb_text_putchar(&g_fb_text_state, static_cast<char>(syscall_arg));
+            return 0;
+        }
+        case Syscall::FB_PUTS: {
+            fb_text_puts(&g_fb_text_state, reinterpret_cast<const char*>(syscall_arg));
+            return 0;
+        }
+        case Syscall::FB_CLEAR: {
+            fb_text_clear(&g_fb_text_state);
+            return 0;
+        }
+        case Syscall::FB_SET_CURSOR: {
+            uint32_t x = (syscall_arg >> 32) & 0xFFFFFFFF;
+            uint32_t y = syscall_arg & 0xFFFFFFFF;
+            fb_text_set_cursor(&g_fb_text_state, x, y);
+            return 0;
+        }
+        case Syscall::FB_SET_COLORS: {
+            uint32_t fg = (syscall_arg >> 32) & 0xFFFFFFFF;
+            uint32_t bg = syscall_arg & 0xFFFFFFFF;
+            fb_text_set_colors(&g_fb_text_state, fg, bg);
+            return 0;
         }
         case Syscall::EXIT: {
             SERIAL_INFO("[SYSCALL EXIT] TODO");
@@ -367,13 +393,11 @@ extern "C" void kernel_main_high() {
         // Now we can safely write to framebuffer
         uint32_t* framebuffer = g_framebuffer->get_buffer();
 
-        // for (uint32_t y = 0; y < height; y++) {
-        //     for (uint32_t x = 0; x < width; x++) {
-        //         uint32_t pixel_index = y * width + x;
-        //         framebuffer[pixel_index] = image_data[y][x];
-        //     }
-        // }
-        SERIAL_INFO("Framebuffer test complete! Screen should be red/blue.");
+        // Initialize framebuffer text state
+        SERIAL_INFO("Initializing framebuffer text rendering...");
+        fb_text_init(&g_fb_text_state, framebuffer, width, height);
+        fb_text_clear(&g_fb_text_state);
+        SERIAL_INFO("Framebuffer text rendering initialized!");
     } else {
         SERIAL_WARN("No framebuffer available");
     }

@@ -43,6 +43,7 @@ SOURCES_CPP := \
     idt.cpp \
     bootinfo.cpp \
     serial.cpp \
+    fb_text.cpp \
     paging/Entry.cpp \
     paging/Table.cpp \
     paging/paging.cpp \
