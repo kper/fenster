@@ -8,8 +8,46 @@
 
 import sys
 import re
+import argparse
 from pathlib import Path
 from PIL import Image
+
+def rle_encode_image(img):
+    """
+    Apply run-length encoding to image pixels.
+
+    Args:
+        img: PIL Image at 1024x768
+
+    Returns:
+        List of tuples (count, color) where count is 1-256 and color is 24-bit RGB
+    """
+    TARGET_WIDTH = 1024
+    TARGET_HEIGHT = 768
+    pixels = img.load()
+
+    encoded = []
+    prev_color = None
+    count = 0
+
+    for y in range(TARGET_HEIGHT):
+        for x in range(TARGET_WIDTH):
+            r, g, b = pixels[x, y]
+            color = (r << 16) | (g << 8) | b
+
+            if color == prev_color and count < 256:
+                count += 1
+            else:
+                if prev_color is not None:
+                    encoded.append((count, prev_color))
+                prev_color = color
+                count = 1
+
+    # Don't forget the last run
+    if prev_color is not None:
+        encoded.append((count, prev_color))
+
+    return encoded
 
 def process_image(img_path: Path):
     """
@@ -135,41 +173,51 @@ def convert_images_to_c_header(base_path: str, output_path: str = "slides.h"):
     for slide_num, slide_path in slides:
         print(f"Processing slide {slide_num}...")
         img = process_image(slide_path)
-        processed_images.append((slide_num, img))
+        rle_data = rle_encode_image(img)
+        processed_images.append((slide_num, rle_data))
+        print(f"  Original: {TARGET_HEIGHT * TARGET_WIDTH} pixels")
+        print(f"  Compressed: {len(rle_data)} runs ({len(rle_data) / (TARGET_HEIGHT * TARGET_WIDTH) * 100:.1f}%)")
 
     # Generate C header
     with open(output_path, 'w') as f:
         f.write("#ifndef SLIDES_H\n")
         f.write("#define SLIDES_H\n\n")
-        f.write(f"// Slide data: {len(slides)} slides, 1024x768 pixels each, 32-bit RGBA format\n")
+        f.write(f"// Slide data: {len(slides)} slides, 1024x768 pixels each, RLE-compressed 24-bit RGB\n")
+        f.write("// Format: upper 8 bits = run length (1-256), lower 24 bits = RGB color\n")
         f.write("#include <stdint.h>\n\n")
         f.write(f"#define SLIDE_WIDTH {TARGET_WIDTH}\n")
         f.write(f"#define SLIDE_HEIGHT {TARGET_HEIGHT}\n")
         f.write(f"#define NUM_SLIDES {len(slides)}\n\n")
 
         # Write each slide as a separate array
-        for slide_num, img in processed_images:
-            pixels = img.load()
+        for slide_num, rle_data in processed_images:
+            f.write(f"static const uint32_t slide_{slide_num}_data[{len(rle_data)}] = {{\n")
 
-            f.write(f"static const uint32_t slide_{slide_num}_data[{TARGET_HEIGHT}][{TARGET_WIDTH}] = {{\n")
+            for i, (count, color) in enumerate(rle_data):
+                if i % 8 == 0:
+                    f.write("    ")
 
-            for y in range(TARGET_HEIGHT):
-                f.write("    {")
-                for x in range(TARGET_WIDTH):
-                    r, g, b = pixels[x, y]
-                    # Create 32-bit color in ARGB format (0xAARRGGBB)
-                    color = 0xFF000000 | (r << 16) | (g << 8) | b
+                # Pack count in upper 8 bits, color in lower 24 bits
+                packed = ((count - 1) << 24) | color  # Store count-1 so 1-256 fits in 0-255
 
-                    f.write(f"0x{color:08X}")
-                    if x < TARGET_WIDTH - 1:
-                        f.write(", ")
+                f.write(f"0x{packed:08X}")
+                if i < len(rle_data) - 1:
+                    f.write(", ")
 
-                f.write("}")
-                if y < TARGET_HEIGHT - 1:
-                    f.write(",")
-                f.write("\n")
+                # Add newline every 8 values for readability
+                if (i + 1) % 8 == 0 and i < len(rle_data) - 1:
+                    f.write("\n")
 
-            f.write("};\n\n")
+            f.write("\n};\n\n")
+
+        # Write metadata about array sizes
+        f.write("static const uint32_t slide_sizes[NUM_SLIDES] = {\n")
+        for i, (slide_num, rle_data) in enumerate(processed_images):
+            f.write(f"    {len(rle_data)}")
+            if i < len(processed_images) - 1:
+                f.write(",")
+            f.write(f"  // slide_{slide_num}\n")
+        f.write("};\n\n")
 
         # Write array of pointers to all slides
         f.write("static const uint32_t* const slides[NUM_SLIDES] = {\n")
@@ -182,10 +230,13 @@ def convert_images_to_c_header(base_path: str, output_path: str = "slides.h"):
 
         f.write("#endif // SLIDES_H\n")
 
+    # Get actual file size
+    file_size = Path(output_path).stat().st_size
+
     print(f"\nHeader file written to: {output_path}")
     print(f"Total slides: {len(slides)}")
     print(f"Array size per slide: {TARGET_HEIGHT} x {TARGET_WIDTH} = {TARGET_HEIGHT * TARGET_WIDTH} pixels")
-    print(f"Estimated file size: ~{(TARGET_HEIGHT * TARGET_WIDTH * 4 * len(slides)) / (1024 * 1024):.1f} MB")
+    print(f"File size: {file_size / (1024 * 1024):.2f} MB ({file_size:,} bytes)")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

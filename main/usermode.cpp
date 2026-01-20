@@ -1,6 +1,7 @@
 #include "usermode.h"
 #include "syscall.h"
 #include "slides.h"
+#include "x86/regs.h"
 
 // User mode test function that runs in ring 3
 
@@ -57,16 +58,21 @@ void weakpoint() {
 
     while (true) {
         // Draw
-        for (uint32_t y = 0; y < height; y++) {
-            for (uint32_t x = 0; x < width; x++) {
-                uint32_t pixel_index = y * width + x;
-                buffer[pixel_index] = slides[current_slide][x + y * width];
+        uint32_t index = 0;
+        for (uint32_t read_index = 0; index < height * width; read_index++) {
+            auto cell = slides[current_slide][read_index];
+            auto repeater =  (cell >> 24) + 1;
+            auto color = cell & 0x00FFFFFF;
+            for (int c = 0; c < repeater; c++) {
+                buffer[index++] =  color;
             }
         }
         draw(buffer);
 
         // Wait for keyboard input
-        while (!can_read_char());
+        while (!can_read_char()) {
+            //asm volatile("hlt");
+        };
         char c = read_char();
         write_char(c);
 
