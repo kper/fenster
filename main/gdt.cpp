@@ -4,6 +4,8 @@
 #include "paging/paging.h"
 #include "memory/memory.h"
 #include "Process.h"
+#include "idt.hpp"  // For InterruptStackFrame
+#include "serial.h"
 
 void GDT::init()
 {
@@ -200,4 +202,52 @@ void GDT::jump_to_ring3(void (*user_function)())
           [rip] "r"((uint64_t)user_function)
         : "memory"
     );
+}
+
+void GDT::init_new_process(void (*entry_point)(), InterruptStackFrame* frame)
+{
+    uint64_t USER_HEAP_START = 0xB0000000;
+    uint64_t USER_HEAP_SIZE = 8 * 1024 * 1024;   // 8MB heap
+    uint64_t USER_STACK_TOP = 0xC0000000;
+
+    SERIAL_INFO("[INIT_NEW_PROCESS] Replacing process with entry point at ");
+    serial::write_hex(reinterpret_cast<uint64_t>(entry_point));
+    serial::write_char('\n');
+
+    // 1. Destroy old process heap if it exists
+    if (process::activeProcess && process::activeProcess->heap) {
+        SERIAL_INFO("[INIT_NEW_PROCESS] Destroying old heap...");
+        memory::kernel_heap->deallocate(process::activeProcess->heap, sizeof(memory::BlockAllocator));
+    }
+
+    // 2. Ensure we have a process object
+    if (!process::activeProcess) {
+        // First process - allocate structures
+        process::activeProcess = reinterpret_cast<Process*>(
+            memory::kernel_heap->allocate(sizeof(Process), alignof(Process))
+        );
+        process::activeProcess->heap = reinterpret_cast<memory::BlockAllocator*>(
+            memory::kernel_heap->allocate(sizeof(memory::BlockAllocator), alignof(memory::BlockAllocator))
+        );
+    }
+
+    // 3. Reinitialize heap with placement new
+    SERIAL_INFO("[INIT_NEW_PROCESS] Reinitializing heap...");
+    new (process::activeProcess->heap) memory::BlockAllocator();
+    process::activeProcess->heap->init(USER_HEAP_START, USER_HEAP_SIZE);
+
+    // 4. Set interrupt frame to jump to new program
+    if (frame) {
+        frame->rip = reinterpret_cast<uint64_t>(entry_point);
+        frame->rsp = USER_STACK_TOP;  // Reset stack to top
+        // rflags already has IF set from previous context
+
+        SERIAL_INFO("[INIT_NEW_PROCESS] Set frame: rip=");
+        serial::write_hex(frame->rip);
+        serial::write_string(" rsp=");
+        serial::write_hex(frame->rsp);
+        serial::write_char('\n');
+    }
+
+    SERIAL_INFO("[INIT_NEW_PROCESS] Process replacement complete");
 }

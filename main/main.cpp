@@ -26,7 +26,23 @@ static ChainedPICs pics = ChainedPICs();
 static const Multiboot2TagFramebuffer* g_framebuffer = nullptr;
 static FbTextState g_fb_text_state;
 
+// Program names for userspace (no function pointers to avoid low address issues)
+static const char* g_program_names[] = {
+    "shell",
+    "slides",
+    nullptr  // Terminator
+};
+
 // Prepare exception handlers
+
+// String comparison for kernel use
+static int strcmp(const char *s1, const char *s2) {
+    while (*s1 && (*s1 == *s2)) {
+        s1++;
+        s2++;
+    }
+    return *(unsigned char *) s1 - *(unsigned char *) s2;
+}
 
 void print_stack_frame(InterruptStackFrame *frame) {
     serial::write_string("ExceptionStackFrame {\n");
@@ -103,7 +119,7 @@ __attribute__((interrupt)) void keyboard_handler(InterruptStackFrame *frame)
 //Process* activeProcess = null;
 
 // The actual syscall handler implementation
-extern "C" uint64_t syscall_handler_inner(uint64_t syscall_number, uint64_t syscall_arg)
+extern "C" uint64_t syscall_handler_inner(uint64_t syscall_number, uint64_t syscall_arg, InterruptStackFrame* frame)
 {
     if (syscall_number != 6) {
         serial::write_string("SYCALL TRIGGERD ");
@@ -189,8 +205,35 @@ extern "C" uint64_t syscall_handler_inner(uint64_t syscall_number, uint64_t sysc
             fb_text_set_colors(&g_fb_text_state, fg, bg);
             return 0;
         }
+        case Syscall::LIST_PROGRAMS: {
+            SERIAL_INFO("[SYSCALL LIST_PROGRAMS] Returning program names address");
+            serial::write_hex(reinterpret_cast<uint64_t>(g_program_names[0]));
+            SERIAL_INFO(" ");
+            return reinterpret_cast<uint64_t>(g_program_names);
+        }
+        case Syscall::RUN_PROGRAM: {
+            const char* name = reinterpret_cast<const char*>(syscall_arg);
+
+            // Find the program entry point
+            void (*program_entry)() = nullptr;
+            if (strcmp(name, "shell") == 0) {
+                program_entry = shell;
+            } else if (strcmp(name, "slides") == 0) {
+                program_entry = weakpoint;
+            } else {
+                // Program not found
+                return static_cast<uint64_t>(-1);
+            }
+
+            // Replace current process with new program (exec-style)
+            gdt.init_new_process(program_entry, frame);
+
+            return 0;
+        }
         case Syscall::EXIT: {
-            SERIAL_INFO("[SYSCALL EXIT] TODO");
+            SERIAL_INFO("[SYSCALL EXIT] Program exiting - restarting shell...");
+            // Exit = restart shell (replace current process)
+            gdt.init_new_process(shell, frame);
             return 0;
         }
         default: {
@@ -226,9 +269,10 @@ __attribute__((naked)) void syscall_handler()
         "push %%r15\n"
 
         // Load arguments for C calling convention
-        // rdi = first arg (syscall_number), rsi = second arg (syscall_arg)
+        // rdi = first arg (syscall_number), rsi = second arg (syscall_arg), rdx = third arg (frame pointer)
         "mov 14*8(%%rsp), %%rdi\n"   // Load saved rax (syscall_number)
         "mov 9*8(%%rsp), %%rsi\n"    // Load saved rdi (syscall_arg)
+        "lea 15*8(%%rsp), %%rdx\n"   // Load address of InterruptStackFrame (after all pushed registers)
 
         "call syscall_handler_inner\n"
         // After call, rax contains the return value - we must preserve it!
@@ -295,6 +339,19 @@ extern "C" void kernel_main_high() {
         );
         serial::write_string("Updated framebuffer pointer to: ");
         serial::write_hex((uint64_t)g_framebuffer);
+        serial::write_char('\n');
+    }
+
+    // Update program name string pointers to high addresses
+    SERIAL_INFO("Updating program name pointers...");
+    for (int i = 0; g_program_names[i] != nullptr; i++) {
+        g_program_names[i] = reinterpret_cast<const char*>(
+            reinterpret_cast<uint64_t>(g_program_names[i]) + paging::KERNEL_OFFSET
+        );
+        serial::write_string("  ");
+        serial::write_string(g_program_names[i]);
+        serial::write_string(" at ");
+        serial::write_hex(reinterpret_cast<uint64_t>(g_program_names[i]));
         serial::write_char('\n');
     }
 

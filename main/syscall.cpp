@@ -73,3 +73,11 @@ void fb_set_colors(uint32_t fg, uint32_t bg) {
     uint64_t packed = ((uint64_t)fg << 32) | (uint64_t)bg;
     raw_syscall(FB_SET_COLORS, packed);
 }
+
+const char** list_programs() {
+    return reinterpret_cast<const char**>(raw_syscall(LIST_PROGRAMS, 0));
+}
+
+void run_program(const char* name) {
+    raw_syscall(RUN_PROGRAM, (uint64_t)name);
+}

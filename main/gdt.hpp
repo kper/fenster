@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 
+// Forward declaration
+struct InterruptStackFrame;
+
 struct PrivilegeStackTable
 {
     uint64_t s0;
@@ -50,6 +53,7 @@ class GDT
 public:
     void init();
     void jump_to_ring3(void (*user_function)());
+    void init_new_process(void (*entry_point)(), InterruptStackFrame* frame);
 
 private:
     uint64_t gdt[7]; // null | kernel CS | kernel DS | TSS (2 entries) | user code | user data

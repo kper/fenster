@@ -29,11 +29,20 @@ void shell() {
         }
         char c = read_char();
 
-        // Echo character to both serial and framebuffer
-        write_char(c);
-        fb_putchar(c);
+        // Handle backspace
+        if (c == '\b' || c == 127) {
+            if (size > 0) {
+                size--;
+                write_char('\b');  // Serial echo
+                fb_putchar('\b');  // Move cursor back
+                fb_putchar(' ');   // Overwrite with space
+                fb_putchar('\b');  // Move cursor back again
+            }
+        } else if (c == '\n') {
+            // Echo newline
+            write_char(c);
+            fb_putchar(c);
 
-        if (c == '\n') {
             data[size] = '\0';
             size = 0;
 
@@ -41,16 +50,44 @@ void shell() {
                 fb_puts("AHHHHHH!\n");
             } else if (strcmp(data, "clear") == 0) {
                 fb_clear();
+            } else if (strcmp(data, "ls") == 0) {
+                fb_puts("Available programs:\n");
+                const char** programs = list_programs();
+                for (int i = 0; programs[i] != nullptr; i++) {
+                    fb_puts("  - ");
+                    fb_puts(programs[i]);
+                    fb_puts("\n");
+                }
             } else if (strcmp(data, "") == 0) {
                 // Empty command, do nothing
             } else {
-                fb_puts("Unknown command: '");
-                fb_puts(data);
-                fb_puts("'\n");
+                // Check if it's a run command
+                char run_prefix[] = "run ";
+                bool is_run = true;
+                for (int i = 0; i < 4; i++) {
+                    if (data[i] != run_prefix[i]) {
+                        is_run = false;
+                        break;
+                    }
+                }
+
+                if (is_run && data[4] != '\0') {
+                    // Extract program name (skip "run ")
+                    char* program_name = data + 4;
+                    run_program(program_name);
+                    // NEVER REACHES HERE - process is replaced
+                } else {
+                    fb_puts("Unknown command: '");
+                    fb_puts(data);
+                    fb_puts("'\n");
+                }
             }
 
             fb_puts("sh> ");
         } else if (size < 1024) {
+            // Echo character to both serial and framebuffer
+            write_char(c);
+            fb_putchar(c);
             data[size++] = c;
         }
     }
@@ -93,6 +130,10 @@ void weakpoint() {
         }
         if (c == 'p' && current_slide > 0) {
             current_slide--;
+        }
+        if (c == 'q') {
+            // Exit the program - will never return
+            exit(0);
         }
     }
 }

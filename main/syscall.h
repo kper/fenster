@@ -21,6 +21,8 @@ enum Syscall {
     FB_CLEAR = 12,
     FB_SET_CURSOR = 13,
     FB_SET_COLORS = 14,
+    LIST_PROGRAMS = 15,
+    RUN_PROGRAM = 16,
     EXIT = 60,
 };
 
@@ -58,5 +60,10 @@ void fb_puts(const char* str);
 void fb_clear();
 void fb_set_cursor(uint32_t x, uint32_t y);
 void fb_set_colors(uint32_t fg, uint32_t bg);
+
+// Program management functions
+// Returns pointer to array of program names (const char*), terminated by nullptr
+const char** list_programs();
+void run_program(const char* name);
 
 #endif //MAIN_SYSCALL_H
