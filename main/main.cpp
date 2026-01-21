@@ -141,7 +141,8 @@ extern "C" uint64_t syscall_handler_inner(uint64_t syscall_number, uint64_t sysc
         case Syscall::READ_CHAR: {
             // FIXME: This is bad
             while (!keyboard::hasChar()) {
-                // Wait for input
+                interrupts_enable();
+                asm volatile("hlt");
             }
             char c = keyboard::getChar();
             return static_cast<uint64_t>(c);  // Return the character read

@@ -25,8 +25,6 @@ void shell() {
     uint64_t size = 0;
 
     while (true) {
-        while (!can_read_char()) {
-        }
         char c = read_char();
 
         // Handle backspace
@@ -117,10 +115,6 @@ void weakpoint() {
         }
         draw(buffer);
 
-        // Wait for keyboard input
-        while (!can_read_char()) {
-            //asm volatile("hlt");
-        };
         char c = read_char();
         write_char(c);
 
