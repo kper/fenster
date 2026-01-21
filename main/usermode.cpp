@@ -56,6 +56,20 @@ void shell() {
                     fb_puts(programs[i]);
                     fb_puts("\n");
                 }
+            } else if (strcmp(data, "sl") == 0) {
+                fb_puts(" \
+                  ooOOOO\n\
+                oo      _____\n\
+               _I__n_n__||_|| ________\n\
+             >(_________|_7_|-|______|\n\
+              /o ()() ()() o   oo  oo\n");
+            } else if (strcmp(data, "help") == 0) {
+                fb_puts("Shell Help:\n\
+    run - Run a program by name\n\
+    ls - List available programs\n\
+    clear - Clear the screen\n\
+    scream - Display frustration for os devs\n");
+
             } else if (strcmp(data, "") == 0) {
                 // Empty command, do nothing
             } else {
@@ -78,6 +92,7 @@ void shell() {
                     fb_puts("Unknown command: '");
                     fb_puts(data);
                     fb_puts("'\n");
+                    fb_puts("Type 'help' for a list of commands\n");
                 }
             }
 

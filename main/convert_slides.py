@@ -12,6 +12,9 @@ import argparse
 from pathlib import Path
 from PIL import Image
 
+TARGET_WIDTH = 1920
+TARGET_HEIGHT = 1080
+
 def rle_encode_image(img):
     """
     Apply run-length encoding to image pixels.
@@ -22,8 +25,7 @@ def rle_encode_image(img):
     Returns:
         List of tuples (count, color) where count is 1-256 and color is 24-bit RGB
     """
-    TARGET_WIDTH = 1024
-    TARGET_HEIGHT = 768
+
     pixels = img.load()
 
     encoded = []
@@ -59,8 +61,6 @@ def process_image(img_path: Path):
     Returns:
         PIL.Image: Processed image at 1024x768
     """
-    TARGET_WIDTH = 1024
-    TARGET_HEIGHT = 768
 
     # Load the image
     img = Image.open(img_path)

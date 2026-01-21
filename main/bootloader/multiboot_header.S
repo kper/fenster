@@ -17,8 +17,8 @@ framebuffer_tag_start:
     .word 5                  # type = framebuffer
     .word 0                  # flags
     .long framebuffer_tag_end - framebuffer_tag_start  # size
-    .long 1024               # width
-    .long 768                # height
+    .long 1920               # width
+    .long 1080                # height
     .long 32                 # depth (bits per pixel)
 framebuffer_tag_end:
 
