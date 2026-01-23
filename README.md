@@ -1,6 +1,19 @@
 # Fenster
 
-Fenster is an university project for the Low-Level-Programming course at TU Wien.
+Fenster is an university project for the [Low-Level-Programming](https://tiss.tuwien.ac.at/course/educationDetails.xhtml?courseNr=194190) course at [TU Wien](https://www.tuwien.at/).
+
+# Features
+
+- x86 64 bit mode
+- Bootloading useing GRUB
+- Memory mapping with page tables
+- Dynamic Memory management
+- Keyboard handling with interrupts
+- Monotasking Processes runing in Ring3
+- Syscalls
+- VGA 1920x1080 video output
+- 0 libraries
+- Includes a userspace program to display slides which we used during the final presentation.
 
 # Compilation
 
